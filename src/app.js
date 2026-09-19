@@ -21,6 +21,7 @@ import proxyRoutes from './routes/proxy.js';
 import shareRoutes from './routes/shares.js';
 import backupRoutes from './routes/backups.js';
 import aiRoutes from './routes/ai.js';
+import localRoutes from './routes/local.js';
 import * as shareController from './controllers/shareController.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -83,6 +84,7 @@ app.use('/api', channelRoutes);
 app.use('/api', epgRoutes);
 app.use('/api', backupRoutes);
 app.use('/api', systemRoutes);
+app.use('/api', localRoutes);
 app.use('/api/shares', shareRoutes);
 app.use('/api/proxy', proxyRoutes);
 app.use('/api/ai', aiRoutes);

@@ -226,6 +226,15 @@ SQLite foreign-key enforcement enabled while preventing orphaned user data.
 - `POST /api/providers/:providerId/import-category`
 - `POST /api/providers/:providerId/import-categories`
 
+### Local M3U Rotasyon & APK Build (localhost)
+
+- `GET /api/local/m3u` — reads original `live_channels_rotation.m3u` from `assets/` (localhost), returns parsed entries and file info.
+- `POST /api/local/m3u/prepare` — body `{ assignedIndices: number[] }`; generates temp M3U preserving original tag order and `.m3u` format.
+- `POST /api/local/m3u/commit` — copies prepared temp M3U onto original `assets/live_channels_rotation.m3u`.
+- `GET /api/local/apk/version` — reads `app/build.gradle.kts` `versionCode` / `versionName`.
+- `PUT /api/local/apk/version` — body `{ version: "46" | "1.0.46" }`; synchronizes `versionCode` and `versionName`.
+- `POST /api/local/apk/build` — spawns visible CMD at project root running `.\gradlew.bat assembleDebug`; output in `app/build/outputs/apk/debug/`.
+
 Deleting a provider removes dependent channel assignments, EPG mappings, stream
 stats, sync data, category mappings, and provider icon cache entries before the
 provider row is deleted.

@@ -163,6 +163,7 @@
     </a>
     <div class="small text-muted mb-2" style="letter-spacing:0.14em;color:#ff6b35" data-i18n="menu">MENÜ</div>
     <a class="nav-link active" href="#" data-view="dashboard" id="nav-dashboard-side" style="color:#ff6b35"><i class="bi bi-speedometer2 me-2"></i><span data-i18n="dashboard">Panel</span></a>
+    <a class="nav-link" href="#" data-view="local-m3u" id="nav-local-m3u-side" style="color:#9ca3af"><i class="bi bi-collection-play me-2"></i>M3U Rotasyon</a>
     <a class="nav-link" href="#" data-view="epg-mapping" id="nav-epg-mapping-side" style="color:#9ca3af"><i class="bi bi-map me-2"></i><span data-i18n="epgMapping">EPG Eşleme</span></a>
     <a class="nav-link" href="#" data-view="statistics" id="nav-statistics-side" style="color:#9ca3af"><i class="bi bi-graph-up me-2"></i><span data-i18n="statistics">İstatistik</span></a>
     <a class="nav-link" href="#" data-view="security" id="nav-security-side" style="color:#9ca3af"><i class="bi bi-shield-lock me-2"></i><span data-i18n="security">Güvenlik</span></a>
@@ -187,6 +188,7 @@
         <div class="collapse navbar-collapse" id="navbarNav">
           <ul class="navbar-nav me-auto">
             <li class="nav-item"><a class="nav-link active" href="#" data-view="dashboard" id="nav-dashboard" aria-current="page" data-i18n="dashboard">Dashboard</a></li>
+            <li class="nav-item"><a class="nav-link" href="#" data-view="local-m3u" id="nav-local-m3u" >M3U Rotasyon</a></li>
             <li class="nav-item"><a class="nav-link" href="#" data-view="epg-mapping" id="nav-epg-mapping" data-i18n="epgMapping">EPG Eşleme</a></li>
             <li class="nav-item"><a class="nav-link" href="#" data-view="statistics" id="nav-statistics" data-i18n="statistics">Statistics</a></li>
             <li class="nav-item"><a class="nav-link" href="#" data-view="security" id="nav-security" data-i18n="security">Security</a></li>
@@ -359,9 +361,9 @@
                     <li class="nav-item" role="presentation">
                        <button class="nav-link" id="tab-backups-btn" data-bs-toggle="tab" data-bs-target="#tab-backups" type="button" role="tab" aria-controls="tab-backups" aria-selected="false" data-i18n="backups">Backups</button>
                     </li>
-                    <li class="nav-item" role="presentation">
-                       <button class="nav-link" id="tab-xtream-btn" data-bs-toggle="tab" data-bs-target="#tab-xtream" type="button" role="tab" aria-controls="tab-xtream" aria-selected="false" data-i18n="xtreamCodes">Xtream Codes</button>
-                    </li>
+                     <li class="nav-item d-none" role="presentation">
+                        <button class="nav-link" id="tab-xtream-btn" data-bs-toggle="tab" data-bs-target="#tab-xtream" type="button" role="tab" aria-controls="tab-xtream" aria-selected="false" data-i18n="xtreamCodes">Xtream Codes</button>
+                     </li>
                     <li class="nav-item" role="presentation">
                        <button class="nav-link" id="tab-hdhr-btn" data-bs-toggle="tab" data-bs-target="#tab-hdhr" type="button" role="tab" aria-controls="tab-hdhr" aria-selected="false" data-i18n-label="hdhomerun" data-i18n="hdhomerun">HDHomeRun</button>
                     </li>
@@ -593,6 +595,86 @@
       </div>
 
     </div> <!-- End view-dashboard -->
+
+    <!-- View: Local M3U Rotasyon & Manuel Sürüm APK Build (LOCALHOST) -->
+    <div id="view-local-m3u" class="d-none">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="m-0">M3U Rotasyon & Kanal Atama Yönetimi <small class="text-muted" style="font-size:11px;letter-spacing:0.12em">LOCALHOST</small></h4>
+        <span class="badge bg-success">.m3u</span>
+      </div>
+      <div class="alert alert-info small py-2">Sistem localhost üzerinden çalışır, uzak sunucuya bağlanmaz. Çıktı orijinal dosya ile birebir aynı tag diziliminde ve <code>.m3u</code> uzantısında üretilir.</div>
+      <div class="row">
+        <div class="col-lg-8">
+          <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+              <span>Orijinal M3U (assets/)</span>
+              <small id="local-m3u-info" class="text-muted">yükleniyor...</small>
+            </div>
+            <div class="card-body">
+              <div class="input-group input-group-sm mb-2">
+                <span class="input-group-text bg-dark border-secondary text-muted"><i class="bi bi-search"></i></span>
+                <input type="text" id="local-m3u-search" class="form-control bg-dark text-light border-secondary" placeholder="Kanal ara...">
+                <button class="btn btn-outline-secondary" type="button" id="local-m3u-select-all">Tümü</button>
+                <button class="btn btn-outline-secondary" type="button" id="local-m3u-select-none">Hiçbiri</button>
+              </div>
+              <div class="small text-muted mb-1"><span id="local-m3u-count">-</span> kanal • Dosya: <code id="local-m3u-path" style="font-size:11px">-</code></div>
+              <ul id="local-m3u-list" class="list-group small" style="max-height:440px;overflow:auto;border:1px solid rgba(255,255,255,0.08);border-radius:8px"></ul>
+              <div class="progress mt-3 d-none" id="local-m3u-progress-wrap" style="height:18px"><div id="local-m3u-progress" class="progress-bar progress-bar-striped progress-bar-animated bg-primary" role="progressbar" style="width:0%">0%</div></div>
+              <button id="btn-local-m3u-prepare" class="btn btn-primary w-100 mt-3"><i class="bi bi-gear me-1"></i> M3U Hazırla / Güncelle</button>
+              <div id="local-m3u-status" class="small mt-2 text-muted"></div>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-4">
+          <div class="card mb-3">
+            <div class="card-header">Sürüm Yönetimi</div>
+            <div class="card-body">
+              <div class="small text-muted mb-2">Mevcut: <code id="local-apk-current">-</code></div>
+              <div class="input-group input-group-sm mb-2">
+                <input type="text" id="local-apk-version-input" class="form-control bg-dark text-light border-secondary" placeholder="örn: 46">
+                <button class="btn btn-outline-warning" type="button" id="btn-local-version-update">Sürümü Güncelle</button>
+              </div>
+              <div class="form-text small">build.gradle → <code>versionCode</code> ve <code>versionName</code> senkronize edilir (örn: 46 → 1.0.46)</div>
+              <div id="local-version-status" class="small mt-2"></div>
+            </div>
+          </div>
+          <div class="card mb-3">
+            <div class="card-header">APK Build</div>
+            <div class="card-body">
+              <button id="btn-local-apk-build" class="btn btn-success w-100"><i class="bi bi-terminal me-1"></i> Build Başlat (assembleDebug)</button>
+              <div class="small text-muted mt-2">Terminal görünür açılır, komut: <code>.\gradlew.bat assembleDebug</code><br>Çıktı: <code>app\build\outputs\apk\debug\</code></div>
+              <div id="local-build-status" class="small mt-2"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modals for Local M3U -->
+    <div class="modal fade" id="local-m3u-copy-modal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content bg-dark text-light" style="border:1px solid rgba(255,68,68,0.2)">
+          <div class="modal-header" style="border-color:rgba(255,255,255,0.08)"><h6 class="modal-title">M3U Güncellendi</h6></div>
+          <div class="modal-body small">Atanmış kanallar başarıyla M3U dosyasına eklendi ve M3U güncellendi.<br>Orijinal proje dosya yoluna (assets/) kopyalamak ister misiniz?</div>
+          <div class="modal-footer" style="border-color:rgba(255,255,255,0.08)">
+            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">HAYIR</button>
+            <button type="button" class="btn btn-primary btn-sm" id="btn-local-m3u-copy-yes">EVET</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal fade" id="local-m3u-build-ask-modal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content bg-dark text-light" style="border:1px solid rgba(255,68,68,0.2)">
+          <div class="modal-header" style="border-color:rgba(255,255,255,0.08)"><h6 class="modal-title">APK Build</h6></div>
+          <div class="modal-body small">M3U ve sürüm işlemleri tamamlandı.<br>APK build almak ister misiniz?</div>
+          <div class="modal-footer" style="border-color:rgba(255,255,255,0.08)">
+            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">HAYIR</button>
+            <button type="button" class="btn btn-success btn-sm" id="btn-local-build-ask-yes">EVET, Başlat</button>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <!-- View: Security -->
     <div id="view-security" class="d-none">

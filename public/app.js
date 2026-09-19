@@ -3776,6 +3776,8 @@ function switchView(viewName) {
   document.getElementById('view-security').classList.add('d-none');
   document.getElementById('view-import-export').classList.add('d-none');
   document.getElementById('view-ai').classList.add('d-none');
+  const localView = document.getElementById('view-local-m3u');
+  if (localView) localView.classList.add('d-none');
 
   // Stop stats interval if running
   if (statsInterval) {
@@ -3820,6 +3822,16 @@ function switchView(viewName) {
     document.getElementById('nav-import-export').classList.add('active');
     document.getElementById('nav-import-export').setAttribute('aria-current', 'page');
     loadUsers(); // Ensure dropdown is populated
+  } else if (viewName === 'local-m3u') {
+    const v = document.getElementById('view-local-m3u');
+    if (v) v.classList.remove('d-none');
+    const n1 = document.getElementById('nav-local-m3u');
+    const n2 = document.getElementById('nav-local-m3u-side');
+    if (n1) { n1.classList.add('active'); n1.setAttribute('aria-current','page'); }
+    if (n2) { n2.classList.add('active'); n2.style.color = '#ff6b35'; }
+    // Auto-load original M3U from assets (localhost) and version
+    loadLocalM3u();
+    loadLocalApkVersion();
   }
 }
 
@@ -5680,3 +5692,199 @@ async function deleteUserBackup(backupId, backupName) {
         showToast(t('errorPrefix') + ' ' + e.message, 'danger');
     }
 }
+
+// ===== LOCAL M3U ROTASYON & MANUEL SÜRÜM APK BUILD (LOCALHOST) =====
+let localM3uEntries = [];
+let localM3uSelected = new Set();
+
+async function loadLocalM3u() {
+  const info = document.getElementById('local-m3u-info');
+  const countEl = document.getElementById('local-m3u-count');
+  const pathEl = document.getElementById('local-m3u-path');
+  const list = document.getElementById('local-m3u-list');
+  if (!list) return;
+  try {
+    if (info) info.textContent = 'yükleniyor...';
+    const data = await fetchJSON('/api/local/m3u');
+    localM3uEntries = data.entries || [];
+    // Keep full for accurate count, but render first page
+    if (info) info.textContent = `${data.count} kanal • ${(data.size/1024).toFixed(1)} KB`;
+    if (countEl) countEl.textContent = data.count;
+    if (pathEl) pathEl.textContent = data.path;
+    // Auto-select all by default?
+    localM3uSelected = new Set(localM3uEntries.map(e => e.index));
+    renderLocalM3uList('');
+    // Bind search once
+    const search = document.getElementById('local-m3u-search');
+    if (search && !search.dataset.bound) {
+      search.dataset.bound = '1';
+      search.addEventListener('input', () => renderLocalM3uList(search.value.trim().toLowerCase()));
+      document.getElementById('local-m3u-select-all')?.addEventListener('click', () => {
+        localM3uSelected = new Set(localM3uEntries.map(e => e.index));
+        renderLocalM3uList(search.value.trim().toLowerCase());
+      });
+      document.getElementById('local-m3u-select-none')?.addEventListener('click', () => {
+        localM3uSelected.clear();
+        renderLocalM3uList(search.value.trim().toLowerCase());
+      });
+    }
+  } catch (e) {
+    if (info) info.textContent = 'hata: ' + e.message;
+    showToast(e.message, 'danger');
+  }
+}
+
+function renderLocalM3uList(filter) {
+  const list = document.getElementById('local-m3u-list');
+  if (!list) return;
+  const frag = document.createDocumentFragment();
+  let shown = 0;
+  const maxShow = 600;
+  for (const e of localM3uEntries) {
+    const name = (e.extinf.split(',').pop() || e.url || '').trim();
+    if (filter && !name.toLowerCase().includes(filter) && !e.url.toLowerCase().includes(filter) && !e.extinf.toLowerCase().includes(filter)) continue;
+    if (shown >= maxShow) break;
+    shown++;
+    const li = document.createElement('li');
+    li.className = 'list-group-item d-flex align-items-center gap-2 py-1 px-2 bg-dark text-light border-secondary';
+    li.style.fontSize = '12px';
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.className = 'form-check-input m-0';
+    cb.checked = localM3uSelected.has(e.index);
+    cb.addEventListener('change', () => {
+      if (cb.checked) localM3uSelected.add(e.index); else localM3uSelected.delete(e.index);
+      document.getElementById('local-m3u-count').textContent = `${localM3uSelected.size} / ${localM3uEntries.length} seçili`;
+    });
+    const label = document.createElement('span');
+    label.textContent = `${e.index + 1}. ${name}`;
+    label.title = e.extinf + '\n' + e.url;
+    label.style.whiteSpace = 'nowrap';
+    label.style.overflow = 'hidden';
+    label.style.textOverflow = 'ellipsis';
+    li.appendChild(cb);
+    li.appendChild(label);
+    frag.appendChild(li);
+  }
+  list.innerHTML = '';
+  list.appendChild(frag);
+  const countEl = document.getElementById('local-m3u-count');
+  if (countEl) countEl.textContent = `${localM3uSelected.size} / ${localM3uEntries.length} seçili${filter ? ' (filtreli '+shown+')' : ''}`;
+}
+
+async function prepareLocalM3u() {
+  const btn = document.getElementById('btn-local-m3u-prepare');
+  const wrap = document.getElementById('local-m3u-progress-wrap');
+  const bar = document.getElementById('local-m3u-progress');
+  const status = document.getElementById('local-m3u-status');
+  if (localM3uSelected.size === 0) { showToast('En az bir kanal seçmelisin', 'warning'); return; }
+  try {
+    setLoadingState(btn, true, 'hazırlanıyor');
+    if (wrap) wrap.classList.remove('d-none');
+    let pct = 0;
+    const tick = setInterval(() => {
+      pct = Math.min(90, pct + Math.random() * 18);
+      if (bar) { bar.style.width = pct.toFixed(0) + '%'; bar.textContent = pct.toFixed(0) + '%'; }
+    }, 180);
+    const res = await fetchJSON('/api/local/m3u/prepare', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ assignedIndices: Array.from(localM3uSelected) })
+    });
+    clearInterval(tick);
+    if (bar) { bar.style.width = '100%'; bar.textContent = '100%'; }
+    await new Promise(r => setTimeout(r, 400));
+    if (wrap) setTimeout(()=> wrap.classList.add('d-none'), 800);
+    if (status) status.textContent = `${res.count} kanalla M3U hazırlandı (${(res.size/1024).toFixed(1)} KB)`;
+    showToast(res.message, 'success');
+    // Spec dialog: copy to assets?
+    const modal = new bootstrap.Modal(document.getElementById('local-m3u-copy-modal'));
+    modal.show();
+  } catch (e) {
+    showToast(e.message, 'danger');
+    const wrap2 = document.getElementById('local-m3u-progress-wrap');
+    if (wrap2) wrap2.classList.add('d-none');
+  } finally {
+    setLoadingState(btn, false);
+  }
+}
+
+async function commitLocalM3uCopy() {
+  try {
+    const res = await fetchJSON('/api/local/m3u/commit', { method: 'POST' });
+    showToast('Orijinal assets/ üzerine yazıldı (' + (res.bytes/1024).toFixed(1) + ' KB)', 'success');
+    bootstrap.Modal.getInstance(document.getElementById('local-m3u-copy-modal'))?.hide();
+    // After copy + version check, ask build
+    setTimeout(() => {
+      const ask = new bootstrap.Modal(document.getElementById('local-m3u-build-ask-modal'));
+      ask.show();
+    }, 500);
+    loadLocalM3u();
+  } catch (e) {
+    showToast(e.message, 'danger');
+  }
+}
+
+async function loadLocalApkVersion() {
+  const el = document.getElementById('local-apk-current');
+  const input = document.getElementById('local-apk-version-input');
+  try {
+    const v = await fetchJSON('/api/local/apk/version');
+    if (el) el.textContent = `${v.versionCode} / ${v.versionName}`;
+    if (input && !input.value) input.value = String(v.versionCode);
+  } catch (e) {
+    if (el) el.textContent = 'hata: ' + e.message;
+  }
+}
+
+async function updateLocalApkVersion() {
+  const input = document.getElementById('local-apk-version-input');
+  const status = document.getElementById('local-version-status');
+  const btn = document.getElementById('btn-local-version-update');
+  const val = input?.value?.trim();
+  if (!val) { showToast('Sürüm numarası gir (örn: 46)', 'warning'); return; }
+  try {
+    setLoadingState(btn, true, 'güncelleniyor');
+    const res = await fetchJSON('/api/local/apk/version', {
+      method: 'PUT',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ version: val })
+    });
+    showToast(`Sürüm güncellendi: ${res.versionCode} / ${res.versionName}`, 'success');
+    if (status) status.textContent = `Kaydedildi: ${res.versionCode} / ${res.versionName} → ${res.path}`;
+    loadLocalApkVersion();
+  } catch (e) {
+    showToast(e.message, 'danger');
+    if (status) status.textContent = 'Hata: ' + e.message;
+  } finally {
+    setLoadingState(btn, false);
+  }
+}
+
+async function triggerLocalApkBuild() {
+  const btn = document.getElementById('btn-local-apk-build');
+  const status = document.getElementById('local-build-status');
+  try {
+    setLoadingState(btn, true, 'başlatılıyor');
+    const res = await fetchJSON('/api/local/apk/build', { method: 'POST' });
+    showToast('Build terminali açıldı: ' + res.command, 'success');
+    if (status) status.innerHTML = `Açılan terminalde canlı izle<br><code>${res.command}</code><br>Proje: <code style="font-size:11px">${res.apkRoot}</code><br>Çıktı: <code style="font-size:11px">${res.output}</code>`;
+  } catch (e) {
+    showToast(e.message, 'danger');
+    if (status) status.textContent = 'Hata: ' + e.message;
+  } finally {
+    setLoadingState(btn, false);
+  }
+}
+
+// Bind local buttons once DOM ready
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('btn-local-m3u-prepare')?.addEventListener('click', prepareLocalM3u);
+  document.getElementById('btn-local-m3u-copy-yes')?.addEventListener('click', commitLocalM3uCopy);
+  document.getElementById('btn-local-build-ask-yes')?.addEventListener('click', () => {
+    bootstrap.Modal.getInstance(document.getElementById('local-m3u-build-ask-modal'))?.hide();
+    triggerLocalApkBuild();
+  });
+  document.getElementById('btn-local-version-update')?.addEventListener('click', updateLocalApkVersion);
+  document.getElementById('btn-local-apk-build')?.addEventListener('click', triggerLocalApkBuild);
+});
