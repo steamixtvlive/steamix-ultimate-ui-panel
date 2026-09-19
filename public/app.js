@@ -5934,6 +5934,42 @@ async function toggleLocalVersionHistory() {
   }
 }
 
+async function addSimpleM3u() {
+  const input = document.getElementById('simple-m3u-url');
+  const status = document.getElementById('simple-m3u-status');
+  const btn = document.getElementById('btn-simple-m3u-add');
+  const url = input?.value?.trim();
+  if (!url) { showToast('M3U linkini gir', 'warning'); return; }
+  let uid = selectedUserId;
+  if (!uid) {
+    try {
+      const users = await fetchJSON('/api/users');
+      if (users && users.length) uid = users[0].id;
+    } catch {}
+  }
+  if (!uid) { showToast('Kullanıcı bulunamadı, önce kullanıcı oluştur', 'warning'); return; }
+  try {
+    setLoadingState(btn, true, 'ekleniyor');
+    if (status) status.textContent = 'M3U çekiliyor...';
+    const res = await fetchJSON('/api/providers/direct-m3u', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ url, user_id: uid })
+    });
+    showToast(`${res.channels_added} kanal eklendi`, 'success');
+    if (status) status.textContent = `${res.channels_added} kanal rotasyona eklendi`;
+    input.value = '';
+    loadProviders();
+    loadLocalM3u();
+    try { loadUserCategoryChannels(); } catch {}
+  } catch (e) {
+    showToast(e.message, 'danger');
+    if (status) status.textContent = 'Hata: ' + e.message;
+  } finally {
+    setLoadingState(btn, false);
+  }
+}
+
 async function addDirectM3u() {
   const input = document.getElementById('direct-m3u-url');
   const status = document.getElementById('direct-m3u-status');
@@ -5966,6 +6002,7 @@ async function addDirectM3u() {
 
 // Bind local buttons once DOM ready
 document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('btn-simple-m3u-add')?.addEventListener('click', addSimpleM3u);
   document.getElementById('btn-direct-m3u-add')?.addEventListener('click', addDirectM3u);
   document.getElementById('btn-local-m3u-prepare')?.addEventListener('click', prepareLocalM3u);
   document.getElementById('btn-local-m3u-copy-yes')?.addEventListener('click', commitLocalM3uCopy);
