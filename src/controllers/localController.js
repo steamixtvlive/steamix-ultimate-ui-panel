@@ -127,22 +127,29 @@ export const createDesktopM3u = async (req, res) => {
       const db = (await import('../database/db.js')).default;
       // Basit: user_channels + provider_channels join ile al
       const rows = db.prepare(`
-        SELECT pc.name, pc.logo, pc.epg_channel_id, pc.stream_type, uc.custom_name, pc.metadata
+        SELECT pc.name, pc.logo, pc.epg_channel_id, pc.stream_type, uc.custom_name, pc.metadata, cat.name as category_name, pc.id as pc_id, p.url as provider_url, p.username as provider_user, p.password as provider_pass
         FROM user_channels uc
         JOIN provider_channels pc ON pc.id = uc.provider_channel_id
         JOIN user_categories cat ON cat.id = uc.user_category_id
+        JOIN providers p ON p.id = pc.provider_id
         WHERE cat.user_id = ?
         ORDER BY cat.sort_order, uc.sort_order
-        LIMIT 5000
       `).all(Number(user_id));
-      // Provider channel URL'lerini al - metadata içinde url var mı kontrol et, yoksa id ile oluştur
+      // Tüm kategoriler ve kanallar - bütün düzenlenmiş liste
       list = rows.map(r => {
         let url = '';
-        try { const meta = r.metadata ? JSON.parse(r.metadata) : null; url = meta?.url || meta?.stream_url || ''; } catch {}
-        // Fallback: provider_channels tablosunda url yok, ama stream için url oluştur
-        // En basit: name ve id ile sahte url (gerçekte provider_channels'da url yok, ama direct M3U için url provider'da)
-        // Bu yüzden eğer url boşsa, provider'ın base url + id ile oluştur
-        return { name: r.custom_name || r.name, url: url || `http://placeholder/${r.name}`, category: 'Genel', extinf: `#EXTINF:-1 tvg-id="${r.epg_channel_id||''}" tvg-name="${r.name}" group-title="Genel",${r.custom_name||r.name}` };
+        try {
+          const meta = r.metadata ? JSON.parse(r.metadata) : null;
+          url = meta?.url || meta?.stream_url || meta?.direct_source || '';
+        } catch {}
+        if (!url) {
+          // Provider base URL + stream_id ile oluştur (direct M3U için)
+          const base = r.provider_url ? r.provider_url.replace(/\/+$/, '') : '';
+          // Direct source varsa kullan, yoksa base + id
+          url = base ? `${base}/live/${r.provider_user}/${r.provider_pass}/${r.pc_id}.ts` : `http://placeholder/${r.name}`;
+        }
+        const cat = r.category_name || 'Genel';
+        return { name: r.custom_name || r.name, url, category: cat, extinf: `#EXTINF:-1 tvg-id="${r.epg_channel_id||''}" tvg-name="${r.name}" tvg-logo="${r.logo||''}" group-title="${cat}",${r.custom_name||r.name}` };
       });
       if (!list.length) return res.status(400).json({ error: 'Atanmış listede kanal yok, önce providerdan ekleyin' });
     }
