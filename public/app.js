@@ -442,12 +442,12 @@ function copyToClipboard(text, btnElement) {
 
             if (isSmallBtn) {
                 btnElement.innerHTML = '<i class="bi bi-check-circle" aria-hidden="true"></i>';
-                btnElement.className = 'btn btn-success ' + btnElement.className.replace('btn-outline-secondary', '');
+                btnElement.className = 'btn btn-danger ' + btnElement.className.replace('btn-outline-secondary', '');
             } else {
                 const width = btnElement.offsetWidth;
                 btnElement.style.width = width + 'px'; // Fix width
                 btnElement.innerHTML = `<i class="bi bi-check-circle" aria-hidden="true"></i> ${successText}`;
-                btnElement.className = 'btn btn-success w-100';
+                btnElement.className = 'btn btn-danger w-100';
             }
 
             // Accessibility: Update title and aria-label
@@ -1887,7 +1887,7 @@ function renderProviderCategories() {
     };
     
     const importWithChannelsBtn = document.createElement('button');
-    importWithChannelsBtn.className = 'btn btn-sm btn-success';
+    importWithChannelsBtn.className = 'btn btn-sm btn-danger';
     importWithChannelsBtn.innerHTML = `<i class="bi bi-box-arrow-in-down" aria-hidden="true"></i> ${t('importWithChannels')}`;
     importWithChannelsBtn.onclick = async () => {
       setLoadingState(importWithChannelsBtn, true, 'loading', false);
@@ -2148,7 +2148,7 @@ function renderProviderChannels(channels) {
     }
     
     const btn = document.createElement('button');
-    btn.className = 'btn btn-sm btn-success ms-2';
+    btn.className = 'btn btn-sm btn-danger ms-2';
     btn.innerHTML = '<i class="bi bi-plus" aria-hidden="true"></i>';
     btn.title = t('add');
     btn.setAttribute('aria-label', `${t('add')} ${ch.name}`); // Accessible label
@@ -2823,7 +2823,7 @@ async function loadEpgSources() {
         editBtn.onclick = () => showEditEpgSourceModal(source);
         
         const toggleBtn = document.createElement('button');
-        toggleBtn.className = `btn btn-sm ${source.enabled ? 'btn-warning' : 'btn-success'}`;
+        toggleBtn.className = `btn btn-sm ${source.enabled ? 'btn-warning' : 'btn-danger'}`;
         toggleBtn.textContent = source.enabled ? t('disable') : t('enable');
         toggleBtn.onclick = async () => {
           await fetchJSON(`/api/epg-sources/${source.id}`, {

@@ -153,9 +153,25 @@ export const createDesktopM3u = async (req, res) => {
       });
       if (!list.length) return res.status(400).json({ error: 'Atanmış listede kanal yok, önce providerdan ekleyin' });
     }
-    const m3u = generateM3uFromChannels(list);
+    // Yeni yapı: önce yeni kategoriler (provider kanalları), sonra varsayılan VOD/dizi/film (orijinal M3U'dan, ham ctn34 hariç)
+    // Varsayılan VOD/dizi/film'i orijinal dosyadan al (group-title VOD/Series/Film olanlar)
+    let defaultVodEntries = [];
+    try {
+      const orig = readOriginalM3u();
+      const origEntries = parseM3u(orig);
+      defaultVodEntries = origEntries.filter(e => {
+        const gt = (e.extinf.match(/group-title="([^"]+)"/) || [])[1] || '';
+        return /vod|film|dizi|series|movie/i.test(gt);
+      });
+    } catch {}
+    // Yeni provider kanalları (list) + varsayılan VOD'lar
+    const combined = [...list];
+    for (const e of defaultVodEntries) {
+      combined.push({ name: (e.extinf.match(/,(.*)$/)||[])[1]?.trim()||'VOD', url: e.url, category: (e.extinf.match(/group-title="([^"]+)"/)||[])[1]||'VOD', extinf: e.extinf });
+    }
+    const m3u = generateM3uFromChannels(combined);
     const outPath = createDesktopM3uTxt(m3u, `rotasyon_test_${Date.now()}.m3u.txt`);
-    res.json({ success: true, path: outPath, count: list.length, size: Buffer.byteLength(m3u, 'utf8') });
+    res.json({ success: true, path: outPath, count: combined.length, size: Buffer.byteLength(m3u, 'utf8') });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
