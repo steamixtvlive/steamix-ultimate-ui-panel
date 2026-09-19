@@ -65,8 +65,10 @@ export function setApkVersion(input) {
 
 export function launchBuild() {
   if (!fs.existsSync(APK_ROOT)) throw new Error('Netflix MOD klasörü bulunamadı — bu özellik sadece localhost\'ta çalışır. Yol: ' + APK_ROOT);
+  if (!fs.existsSync(path.join(APK_ROOT, 'gradlew.bat'))) throw new Error('gradlew.bat bulunamadı, Netflix MOD klasörünü kontrol edin: ' + APK_ROOT);
   // Spec: SADECE .\gradlew.bat assembleDebug, terminal görünür, canlı izleme
-  spawn('cmd', ['/c', 'start', 'Steamix Build - assembleDebug', 'cmd', '/k', 'gradlew.bat assembleDebug'], {
+  // Windows `start` başlığı tırnak içinde, komut .\ ile tam spec uyumlu
+  spawn('cmd', ['/c', 'start', 'Steamix Build - assembleDebug', 'cmd', '/k', '.\\gradlew.bat assembleDebug'], {
     cwd: APK_ROOT,
     shell: true,
     detached: true,

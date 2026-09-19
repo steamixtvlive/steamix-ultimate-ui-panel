@@ -3769,8 +3769,6 @@ async function updateDashboardCounters() {
 }
 
 function switchView(viewName) {
-  // Local mod: dashboard -> M3U Rotasyon (kafa karıştırmasın)
-  if (viewName === 'dashboard') viewName = 'local-m3u';
   // Hide all views
   document.getElementById('view-dashboard').classList.add('d-none');
   document.getElementById('view-epg-mapping').classList.add('d-none');
@@ -3778,8 +3776,6 @@ function switchView(viewName) {
   document.getElementById('view-security').classList.add('d-none');
   document.getElementById('view-import-export').classList.add('d-none');
   document.getElementById('view-ai').classList.add('d-none');
-  const localView = document.getElementById('view-local-m3u');
-  if (localView) localView.classList.add('d-none');
 
   // Stop stats interval if running
   if (statsInterval) {
@@ -3803,6 +3799,9 @@ function switchView(viewName) {
     document.getElementById('view-dashboard').classList.remove('d-none');
     document.getElementById('nav-dashboard').classList.add('active');
     document.getElementById('nav-dashboard').setAttribute('aria-current', 'page');
+    // Entegre local panel: M3U ve sürüm bilgilerini yükle
+    loadLocalM3u().catch(()=>{});
+    loadLocalApkVersion().catch(()=>{});
   } else if (viewName === 'epg-mapping') {
     document.getElementById('view-epg-mapping').classList.remove('d-none');
     document.getElementById('nav-epg-mapping').classList.add('active');
@@ -3824,16 +3823,6 @@ function switchView(viewName) {
     document.getElementById('nav-import-export').classList.add('active');
     document.getElementById('nav-import-export').setAttribute('aria-current', 'page');
     loadUsers(); // Ensure dropdown is populated
-  } else if (viewName === 'local-m3u') {
-    const v = document.getElementById('view-local-m3u');
-    if (v) v.classList.remove('d-none');
-    const n1 = document.getElementById('nav-local-m3u');
-    const n2 = document.getElementById('nav-local-m3u-side');
-    if (n1) { n1.classList.add('active'); n1.setAttribute('aria-current','page'); }
-    if (n2) { n2.classList.add('active'); n2.style.color = '#ff6b35'; }
-    // Auto-load original M3U from assets (localhost) and version
-    loadLocalM3u();
-    loadLocalApkVersion();
   }
 }
 
