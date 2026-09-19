@@ -3769,6 +3769,8 @@ async function updateDashboardCounters() {
 }
 
 function switchView(viewName) {
+  // Local mod: dashboard -> M3U Rotasyon (kafa karıştırmasın)
+  if (viewName === 'dashboard') viewName = 'local-m3u';
   // Hide all views
   document.getElementById('view-dashboard').classList.add('d-none');
   document.getElementById('view-epg-mapping').classList.add('d-none');
