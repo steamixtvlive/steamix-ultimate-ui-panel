@@ -10,6 +10,13 @@ export function createCategory(database, userId, {name, type = 'live'}) {
   if (typeof name !== 'string' || !name.trim()) fail(400, 'name required');
   const isAdult = isAdultCategory(name) ? 1 : 0;
   const sortOrder = database.prepare('SELECT COALESCE(MAX(sort_order), -1) as max_sort FROM user_categories WHERE user_id = ?').get(userId).max_sort + 1;
+  // Yeni kategori = rotasyon için, is_new_rotation=1
+  const hasNewCol = database.prepare("SELECT COUNT(*) as c FROM pragma_table_info('user_categories') WHERE name='is_new_rotation'").get().c;
+  if (hasNewCol) {
+    const info = database.prepare('INSERT INTO user_categories (user_id, name, is_adult, sort_order, type, is_new_rotation) VALUES (?, ?, ?, ?, ?, 1)')
+      .run(userId, name.trim(), isAdult, sortOrder, type || 'live');
+    return {id:Number(info.lastInsertRowid),user_id:userId,name:name.trim(),is_adult:isAdult,sort_order:sortOrder,type:type || 'live', is_new_rotation:1};
+  }
   const info = database.prepare('INSERT INTO user_categories (user_id, name, is_adult, sort_order, type) VALUES (?, ?, ?, ?, ?)')
     .run(userId, name.trim(), isAdult, sortOrder, type || 'live');
   return {id:Number(info.lastInsertRowid),user_id:userId,name:name.trim(),is_adult:isAdult,sort_order:sortOrder,type:type || 'live'};

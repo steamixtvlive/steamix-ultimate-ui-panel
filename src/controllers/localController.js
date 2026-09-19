@@ -127,7 +127,7 @@ export const createDesktopM3u = async (req, res) => {
       const db = (await import('../database/db.js')).default;
       // Basit: user_channels + provider_channels join ile al
       const rows = db.prepare(`
-        SELECT pc.name, pc.logo, pc.epg_channel_id, pc.stream_type, uc.custom_name, pc.metadata, cat.name as category_name, pc.id as pc_id, p.url as provider_url, p.username as provider_user, p.password as provider_pass
+        SELECT pc.name, pc.logo, pc.epg_channel_id, pc.stream_type, uc.custom_name, pc.metadata, cat.name as category_name, cat.type as cat_type, cat.is_new_rotation, pc.id as pc_id, p.url as provider_url, p.username as provider_user, p.password as provider_pass
         FROM user_channels uc
         JOIN provider_channels pc ON pc.id = uc.provider_channel_id
         JOIN user_categories cat ON cat.id = uc.user_category_id
@@ -135,8 +135,15 @@ export const createDesktopM3u = async (req, res) => {
         WHERE cat.user_id = ?
         ORDER BY cat.sort_order, uc.sort_order
       `).all(Number(user_id));
-      // Tüm kategoriler ve kanallar - bütün düzenlenmiş liste
-      list = rows.map(r => {
+      // Sadece VOD/dizi/film + is_new_rotation=1 olan yeni kategoriler
+      const filteredRows = rows.filter(r => {
+        const isVodCat = /vod|film|dizi|series|movie/i.test(r.cat_type) || /vod|film|dizi/i.test(r.category_name);
+        const isNew = Number(r.is_new_rotation) === 1;
+        return isVodCat || isNew;
+      });
+      const useRows = filteredRows.length ? filteredRows : rows.slice(0, 100);
+      // Tüm kategoriler ve kanallar - bütün düzenlenmiş liste (yeni + VOD)
+      list = useRows.map(r => {
         let url = '';
         try {
           const meta = r.metadata ? JSON.parse(r.metadata) : null;
