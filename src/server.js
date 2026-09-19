@@ -51,7 +51,7 @@ let redisClient = null;
   if (process.env.DISABLE_CLUSTER === 'true') {
     initDb(true);
     initEpgDb();
-    try { db.prepare("DELETE FROM whitelisted_ips").run(); db.prepare("DELETE FROM blocked_ips").run(); console.info("🔓 IP kilit temizlendi"); } catch {}
+    // NOT: IP listelerine dokunulmaz (beyaz/kara liste kalıcıdır, panelden yönetilir).
     streamManager.init(db, redisClient);
     await createDefaultAdmin();
     try { const bcrypt = await import('bcrypt'); const h = await bcrypt.hash('81ed4e1c66d95b71', 10); db.prepare("UPDATE admin_users SET password=? WHERE username='admin'").run(h); console.info("🔐 Admin şifre sabitlendi: 81ed4e1c66d95b71"); } catch(e){ console.error("Şifre sabitleme hatası",e.message)}
