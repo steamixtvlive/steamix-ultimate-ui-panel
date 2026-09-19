@@ -2486,6 +2486,21 @@ document.getElementById('user-form').addEventListener('submit', async e => {
 document.getElementById('provider-form').addEventListener('submit', async e => {
   e.preventDefault();
   const f = e.target;
+  // Direkt M3U linki yapıştırıldıysa (ctn34 get.php?username=&password=) otomatik parçala
+  try {
+    const rawUrl = f.url.value.trim();
+    if (rawUrl.includes('get.php') && rawUrl.includes('username=')) {
+      const u = new URL(rawUrl);
+      const base = `${u.protocol}//${u.host}`;
+      const user = u.searchParams.get('username');
+      const pass = u.searchParams.get('password');
+      if (base && user && pass) {
+        f.url.value = base;
+        if (!f.username.value.trim()) f.username.value = user;
+        if (!f.password.value.trim()) f.password.value = pass;
+      }
+    }
+  } catch {}
   const btn = document.getElementById('save-provider-btn');
   setLoadingState(btn, true, 'saving');
 

@@ -195,10 +195,53 @@ export async function performSync(providerId, userId, options = {}) {
 
     console.info(`🔄 Starting sync for provider ${provider.name} (user ${userId})`);
 
+    // Direkt M3U (ctn34 get.php?username=&password=&type=m3u_plus) desteği:
+    // Eğer provider URL'i get.php içeriyorsa veya ctn34 gibi direkt M3U ise, doğrudan M3U çek
+    let directM3u = null;
+    try {
+      const isDirect = provider.url.includes('get.php') || provider.name.startsWith('Direct M3U');
+      if (isDirect || provider.url.includes('ctn34')) {
+        const m3uUrl = provider.url.includes('get.php')
+          ? provider.url
+          : `${provider.url.replace(/\/+$/, '')}/get.php?username=${encodeURIComponent(provider.username)}&password=${encodeURIComponent(provider.password)}&type=m3u_plus&output=ts`;
+        const { fetchDirectM3u } = await import('./directM3uService.js');
+        directM3u = await fetchDirectM3u(m3uUrl);
+        console.info(`📥 Direct M3U fetched: ${directM3u.count} channels`);
+      }
+    } catch (e) {
+      console.warn(`Direct M3U fetch failed, falling back to Xtream: ${e.message}`);
+    }
+
     // Fetch and normalize the provider catalog before applying local mappings.
-    const xtream = createXtreamClient(provider);
-    const { allChannels, allCategories, completeStreamTypes, snapshotStates } =
-      await fetchProviderCatalog(provider, xtream);
+    let allChannels, allCategories, completeStreamTypes, snapshotStates;
+    if (directM3u) {
+      // Convert direct M3U entries to provider catalog format
+      allCategories = [...new Set(directM3u.entries.map(e => {
+        const m = e.extinf.match(/group-title="([^"]+)"/);
+        return m ? m[1] : 'Genel';
+      }))].map((name, idx) => ({ category_id: `m3u_${idx}`, category_name: name, parent_id: 0 }));
+      const catMap = new Map(allCategories.map(c => [c.category_name, c.category_id]));
+      allChannels = directM3u.entries.map((e, idx) => {
+        const nameMatch = e.extinf.match(/,(.*)$/);
+        const name = nameMatch ? nameMatch[1].trim() : `Channel ${idx}`;
+        const tvgId = (e.extinf.match(/tvg-id="([^"]+)"/) || [])[1] || '';
+        const logo = (e.extinf.match(/tvg-logo="([^"]+)"/) || [])[1] || '';
+        const group = (e.extinf.match(/group-title="([^"]+)"/) || [])[1] || 'Genel';
+        return {
+          name, stream_id: 100000 + idx, stream_icon: logo, epg_channel_id: tvgId,
+          category_id: catMap.get(group) || 'm3u_0', stream_type: 'live', direct_source: e.url
+        };
+      });
+      completeStreamTypes = new Set(['live']);
+      snapshotStates = new Map();
+    } else {
+      const xtream = createXtreamClient(provider);
+      const catalog = await fetchProviderCatalog(provider, xtream);
+      allChannels = catalog.allChannels;
+      allCategories = catalog.allCategories;
+      completeStreamTypes = catalog.completeStreamTypes;
+      snapshotStates = catalog.snapshotStates;
+    }
 
     // Process categories and create mappings
     // Performance Optimization: Pre-fetch all mappings to avoid N+1 queries
