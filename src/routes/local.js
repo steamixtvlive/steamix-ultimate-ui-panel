@@ -12,6 +12,9 @@ router.post('/local/m3u/commit', authenticateToken, ctrl.commitLocalM3u);
 
 router.get('/local/apk/version', authenticateToken, ctrl.getVersion);
 router.put('/local/apk/version', authenticateToken, ctrl.updateVersion);
+router.post('/local/apk/rollback', authenticateToken, ctrl.rollbackVersion);
+router.get('/local/apk/history', authenticateToken, ctrl.getHistory);
 router.post('/local/apk/build', authenticateToken, ctrl.triggerBuild);
+router.post('/local/apk/stop', authenticateToken, ctrl.stopBuildCtrl);
 
 export default router;

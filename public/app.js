@@ -5865,17 +5865,68 @@ async function updateLocalApkVersion() {
 
 async function triggerLocalApkBuild() {
   const btn = document.getElementById('btn-local-apk-build');
+  const stopBtn = document.getElementById('btn-local-apk-stop');
   const status = document.getElementById('local-build-status');
   try {
     setLoadingState(btn, true, 'başlatılıyor');
     const res = await fetchJSON('/api/local/apk/build', { method: 'POST' });
     showToast('Build terminali açıldı: ' + res.command, 'success');
     if (status) status.innerHTML = `Açılan terminalde canlı izle<br><code>${res.command}</code><br>Proje: <code style="font-size:11px">${res.apkRoot}</code><br>Çıktı: <code style="font-size:11px">${res.output}</code>`;
+    if (stopBtn) stopBtn.classList.remove('d-none');
   } catch (e) {
     showToast(e.message, 'danger');
     if (status) status.textContent = 'Hata: ' + e.message;
   } finally {
     setLoadingState(btn, false);
+  }
+}
+
+async function stopLocalApkBuild() {
+  const btn = document.getElementById('btn-local-apk-stop');
+  const status = document.getElementById('local-build-status');
+  try {
+    setLoadingState(btn, true, 'durduruluyor');
+    const res = await fetchJSON('/api/local/apk/stop', { method: 'POST' });
+    showToast(res.message || 'Build durduruldu', 'warning');
+    if (status) status.textContent = res.message;
+    btn.classList.add('d-none');
+  } catch (e) {
+    showToast(e.message, 'danger');
+  } finally {
+    setLoadingState(btn, false);
+  }
+}
+
+async function rollbackLocalApkVersion() {
+  const status = document.getElementById('local-version-status');
+  try {
+    const res = await fetchJSON('/api/local/apk/rollback', { method: 'POST' });
+    showToast(res.message, 'success');
+    if (status) status.textContent = res.message + ' → ' + res.path;
+    loadLocalApkVersion();
+  } catch (e) {
+    showToast(e.message, 'danger');
+    if (status) status.textContent = 'Hata: ' + e.message;
+  }
+}
+
+async function toggleLocalVersionHistory() {
+  const list = document.getElementById('local-version-history');
+  if (!list) return;
+  if (!list.classList.contains('d-none')) { list.classList.add('d-none'); return; }
+  try {
+    const hist = await fetchJSON('/api/local/apk/history');
+    list.innerHTML = '';
+    if (!hist.length) list.innerHTML = '<li class="list-group-item small text-muted">Geçmiş yok</li>';
+    else hist.slice(-10).reverse().forEach(h => {
+      const li = document.createElement('li');
+      li.className = 'list-group-item small d-flex justify-content-between';
+      li.innerHTML = `<span>${h.versionCode} / ${h.versionName}</span><small class="text-muted">${new Date(h.at).toLocaleString()}</small>`;
+      list.appendChild(li);
+    });
+    list.classList.remove('d-none');
+  } catch (e) {
+    showToast(e.message, 'danger');
   }
 }
 
@@ -5888,5 +5939,8 @@ document.addEventListener('DOMContentLoaded', () => {
     triggerLocalApkBuild();
   });
   document.getElementById('btn-local-version-update')?.addEventListener('click', updateLocalApkVersion);
+  document.getElementById('btn-local-version-rollback')?.addEventListener('click', rollbackLocalApkVersion);
+  document.getElementById('btn-local-version-history')?.addEventListener('click', toggleLocalVersionHistory);
   document.getElementById('btn-local-apk-build')?.addEventListener('click', triggerLocalApkBuild);
+  document.getElementById('btn-local-apk-stop')?.addEventListener('click', stopLocalApkBuild);
 });

@@ -1,5 +1,5 @@
 import { readOriginalM3u, parseM3u, generateM3uFromAssignments, writeTempM3u, commitTempToOriginal, getM3uPaths, getTempM3uContent } from '../services/localM3uService.js';
-import { getApkVersion, setApkVersion, launchBuild, getBuildOutputPath } from '../services/localApkService.js';
+import { getApkVersion, setApkVersion, launchBuild, getBuildOutputPath, rollbackApkVersion, getVersionHistory, stopBuild } from '../services/localApkService.js';
 
 export const getLocalM3u = (req, res) => {
   try {
@@ -87,6 +87,31 @@ export const triggerBuild = (req, res) => {
   try {
     const result = launchBuild();
     res.json({ success: true, ...result, output: getBuildOutputPath(), message: 'Build terminali açıldı, canlı izleyebilirsiniz' });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+};
+
+export const rollbackVersion = (req, res) => {
+  try {
+    const result = rollbackApkVersion();
+    res.json({ success: true, ...result, message: `Sürüm geri alındı: ${result.versionCode} / ${result.versionName}` });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+};
+
+export const getHistory = (req, res) => {
+  try {
+    res.json(getVersionHistory());
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+};
+
+export const stopBuildCtrl = (req, res) => {
+  try {
+    res.json(stopBuild());
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
