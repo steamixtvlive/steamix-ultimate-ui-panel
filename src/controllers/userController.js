@@ -409,6 +409,7 @@ export const updateUser = async (req, res) => {
     // Get existing user
     const existing = db.prepare('SELECT * FROM users WHERE id = ?').get(id);
     if (!existing) return res.status(404).json({error: 'user not found'});
+    if (existing.username === 'hazir_rotasyon_m3u') return res.status(403).json({error: 'Bu kullanıcı korumalı, düzenlenemez (hazir_rotasyon_m3u)'});
 
     const updates = [];
     const params = [];
@@ -537,6 +538,8 @@ export const deleteUser = async (req, res) => {
   const id = Number(req.params.id);
   try {
     if (!req.user.is_admin) return res.status(403).json({error: 'Access denied'});
+    const target = db.prepare('SELECT username FROM users WHERE id = ?').get(id);
+    if (target && target.username === 'hazir_rotasyon_m3u') return res.status(403).json({error: 'Bu kullanıcı korumalı, silinemez (hazir_rotasyon_m3u)'});
     // Access is revoked before anything is torn down. Otherwise a request that
     // starts after the runtime scan below still passes the account checks, can
     // hydrate the credential, and outlives the response. The previous state is

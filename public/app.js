@@ -898,15 +898,17 @@ async function loadUsers() {
         }
     };
 
+    const isProtected = u.username === 'hazir_rotasyon_m3u';
     const editBtn = document.createElement('button');
-    editBtn.className = 'btn btn-sm btn-outline-secondary me-1';
+    editBtn.className = 'btn btn-sm btn-outline-secondary me-1' + (isProtected ? ' d-none' : '');
     editBtn.innerHTML = '<i class="bi bi-pencil" aria-hidden="true"></i>'; // Edit icon
     editBtn.setAttribute('aria-label', t('editUser') || t('edit'));
-    editBtn.title = t('editUser') || t('edit');
-    editBtn.onclick = () => showEditUserModal(u);
+    editBtn.title = isProtected ? 'Düzenleme kapalı (korumalı rotasyon)' : (t('editUser') || t('edit'));
+    if (!isProtected) editBtn.onclick = () => showEditUserModal(u);
+    else editBtn.disabled = true;
 
     const delBtn = document.createElement('button');
-    delBtn.className = 'btn btn-sm btn-danger';
+    delBtn.className = 'btn btn-sm btn-danger' + (isProtected ? ' d-none' : '');
     delBtn.innerHTML = '<i class="bi bi-trash" aria-hidden="true"></i>';
     delBtn.setAttribute('aria-label', t('deleteAction'));
     delBtn.title = t('deleteAction');
