@@ -81,3 +81,20 @@ export function getTempM3uContent() {
   if (!fs.existsSync(TEMP_M3U)) return null;
   return fs.readFileSync(TEMP_M3U, 'utf8');
 }
+
+export function createDesktopM3uTxt(content, filename = 'rotasyon_test.m3u.txt') {
+  const desktop = path.join(os.homedir(), 'Desktop');
+  const outPath = path.join(desktop, filename);
+  fs.writeFileSync(outPath, content, 'utf8');
+  return outPath;
+}
+
+export function generateM3uFromChannels(channels) {
+  // channels: array of {name, url, extinf?}
+  let out = '#EXTM3U\n';
+  for (const ch of channels) {
+    const extinf = ch.extinf || `#EXTINF:-1 tvg-id="" tvg-name="${ch.name}" group-title="${ch.category || 'Genel'}" ,${ch.name}`;
+    out += extinf + '\n' + (ch.url || '') + '\n';
+  }
+  return out;
+}

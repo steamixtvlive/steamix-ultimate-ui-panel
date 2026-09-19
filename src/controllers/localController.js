@@ -1,4 +1,4 @@
-import { readOriginalM3u, parseM3u, generateM3uFromAssignments, writeTempM3u, commitTempToOriginal, getM3uPaths, getTempM3uContent } from '../services/localM3uService.js';
+import { readOriginalM3u, parseM3u, generateM3uFromAssignments, writeTempM3u, commitTempToOriginal, getM3uPaths, getTempM3uContent, createDesktopM3uTxt, generateM3uFromChannels } from '../services/localM3uService.js';
 import { getApkVersion, setApkVersion, launchBuild, getBuildOutputPath, rollbackApkVersion, getVersionHistory, stopBuild } from '../services/localApkService.js';
 
 export const getLocalM3u = (req, res) => {
@@ -112,6 +112,43 @@ export const getHistory = (req, res) => {
 export const stopBuildCtrl = (req, res) => {
   try {
     res.json(stopBuild());
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+};
+
+export const createDesktopM3u = async (req, res) => {
+  try {
+    const { channels, user_id } = req.body || {};
+    let list = channels;
+    // Eğer channels yoksa, seçili kullanıcının atanmış kanallarını DB'den al
+    if (!list || !Array.isArray(list) || list.length === 0) {
+      if (!user_id) return res.status(400).json({ error: 'channels veya user_id gerekli' });
+      const db = (await import('../database/db.js')).default;
+      // Basit: user_channels + provider_channels join ile al
+      const rows = db.prepare(`
+        SELECT pc.name, pc.logo, pc.epg_channel_id, pc.stream_type, uc.custom_name, pc.metadata
+        FROM user_channels uc
+        JOIN provider_channels pc ON pc.id = uc.provider_channel_id
+        JOIN user_categories cat ON cat.id = uc.user_category_id
+        WHERE cat.user_id = ?
+        ORDER BY cat.sort_order, uc.sort_order
+        LIMIT 5000
+      `).all(Number(user_id));
+      // Provider channel URL'lerini al - metadata içinde url var mı kontrol et, yoksa id ile oluştur
+      list = rows.map(r => {
+        let url = '';
+        try { const meta = r.metadata ? JSON.parse(r.metadata) : null; url = meta?.url || meta?.stream_url || ''; } catch {}
+        // Fallback: provider_channels tablosunda url yok, ama stream için url oluştur
+        // En basit: name ve id ile sahte url (gerçekte provider_channels'da url yok, ama direct M3U için url provider'da)
+        // Bu yüzden eğer url boşsa, provider'ın base url + id ile oluştur
+        return { name: r.custom_name || r.name, url: url || `http://placeholder/${r.name}`, category: 'Genel', extinf: `#EXTINF:-1 tvg-id="${r.epg_channel_id||''}" tvg-name="${r.name}" group-title="Genel",${r.custom_name||r.name}` };
+      });
+      if (!list.length) return res.status(400).json({ error: 'Atanmış listede kanal yok, önce providerdan ekleyin' });
+    }
+    const m3u = generateM3uFromChannels(list);
+    const outPath = createDesktopM3uTxt(m3u, `rotasyon_test_${Date.now()}.m3u.txt`);
+    res.json({ success: true, path: outPath, count: list.length, size: Buffer.byteLength(m3u, 'utf8') });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

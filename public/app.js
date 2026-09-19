@@ -6002,8 +6002,31 @@ async function addDirectM3u() {
   }
 }
 
+async function createDesktopM3u() {
+  const btn = document.getElementById('btn-create-desktop-m3u');
+  const status = document.getElementById('desktop-m3u-status');
+  if (!selectedUserId) { showToast('Önce kullanıcı seç (hazir_rotasyon_m3u)', 'warning'); return; }
+  try {
+    setLoadingState(btn, true, 'oluşturuluyor');
+    if (status) status.textContent = 'Masaüstüne yazılıyor...';
+    const res = await fetchJSON('/api/local/m3u/create-desktop-txt', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ user_id: selectedUserId })
+    });
+    showToast(`Masaüstüne yazıldı: ${res.path} (${res.count} kanal)`, 'success');
+    if (status) status.innerHTML = `Yazıldı: <code style="font-size:11px">${res.path}</code> (${res.count} kanal, ${(res.size/1024).toFixed(1)} KB)`;
+  } catch (e) {
+    showToast(e.message, 'danger');
+    if (status) status.textContent = 'Hata: ' + e.message;
+  } finally {
+    setLoadingState(btn, false);
+  }
+}
+
 // Bind local buttons once DOM ready
 document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('btn-create-desktop-m3u')?.addEventListener('click', createDesktopM3u);
   document.getElementById('btn-simple-m3u-add')?.addEventListener('click', addSimpleM3u);
   document.getElementById('btn-direct-m3u-add')?.addEventListener('click', addDirectM3u);
   document.getElementById('btn-local-m3u-prepare')?.addEventListener('click', prepareLocalM3u);
