@@ -1,5 +1,6 @@
 import express from 'express';
 import * as providerController from '../controllers/providerController.js';
+import * as directM3uController from '../controllers/directM3uController.js';
 import { authenticateToken } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -7,6 +8,7 @@ const router = express.Router();
 router.get('/providers', authenticateToken, providerController.getProviders);
 router.post('/providers', authenticateToken, providerController.createProvider);
 router.post('/providers/bulk-url', authenticateToken, providerController.bulkUpdateProviderUrls);
+router.post('/providers/direct-m3u', authenticateToken, directM3uController.importDirectM3u);
 router.put('/providers/:id', authenticateToken, providerController.updateProvider);
 router.delete('/providers/:id', authenticateToken, providerController.deleteProvider);
 
