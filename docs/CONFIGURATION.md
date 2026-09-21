@@ -172,6 +172,11 @@ until this is exercised on a real Proxmox host.
   per IP within `CLIENT_LOG_RATE_LIMIT_WINDOW_MS`. Defaults to `120`.
 - `CLIENT_LOG_RATE_LIMIT_WINDOW_MS`: Client log rate limit window in
   milliseconds. Defaults to `3600000` (1 hour).
+- Provider `user_agent`: the per-provider User-Agent saved in the provider
+  form is sent on every catalog sync request (Xtream API fallback, categories,
+  VOD, series, M3U). Use it when a host blocks the default node agent and
+  sync returns 0 channels. Empty syncs now report the per-type reason
+  (HTTP status / error) in the sync response instead of silent zeros.
 
 ## Stream Tracking
 

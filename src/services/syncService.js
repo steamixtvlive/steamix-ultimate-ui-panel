@@ -197,8 +197,24 @@ export async function performSync(providerId, userId, options = {}) {
 
     // Fetch and normalize the provider catalog before applying local mappings.
     const xtream = createXtreamClient(provider);
-    const { allChannels, allCategories, completeStreamTypes, snapshotStates } =
+    const { allChannels, allCategories, completeStreamTypes, snapshotStates, errors: catalogErrors } =
       await fetchProviderCatalog(provider, xtream);
+
+    // Hicbir turde icerik gelmediyse sessiz 0 donme: sebebi UI'a tasi.
+    if (allChannels.length === 0) {
+      const reasons = ['live', 'movie', 'series']
+        .map(t => catalogErrors?.[t])
+        .filter(Boolean);
+      if (reasons.length > 0) {
+        errorMessage = `0 icerik alindi (${reasons.join(' | ')})`;
+        db.prepare(`
+          INSERT INTO sync_logs (provider_id, user_id, sync_time, status, error_message)
+          VALUES (?, ?, ?, ?, ?)
+        `).run(providerId, userId, startTime, 'error', errorMessage);
+        console.error(`❌ Sync bos dondu:`, errorMessage);
+        return { channelsAdded, channelsUpdated, categoriesAdded, errorMessage };
+      }
+    }
 
     // Process categories and create mappings
     // Performance Optimization: Pre-fetch all mappings to avoid N+1 queries
