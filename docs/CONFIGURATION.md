@@ -139,7 +139,22 @@ until this is exercised on a real Proxmox host.
 ## Network and Proxy
 
 - `TRUST_PROXY`: Express trust proxy setting. Use this behind a reverse proxy
-  that terminates HTTPS or forwards client IPs.
+  that terminates HTTPS or forwards client IPs. **Render'da zorunludur
+  (`TRUST_PROXY=1`)**: ayarlanmazsa tüm ziyaretçiler proxy IP'siyle görünür,
+  IP beyaz listesi çalışmaz ve bir kişinin hatalı girişleri herkesi 3600sn
+  engeller.
+- `DISABLE_CLUSTER`: Set to `true` on low-RAM hosts (Render free, 512 MB) to
+  run a single worker. Prevents OOM crashes during large imports.
+- `RESTORE_PASSWORD`: Backup/restore password. When set and the database is
+  empty on boot, the server automatically imports the newest `.bin` from the
+  `backups` branch (see `RESTORE_REPO`/`RESTORE_BRANCH`). This recovers
+  settings after ephemeral-filesystem wipes (Render free). Keep it identical
+  to the `EXPORT_PASS` used by the backup workflow.
+- `RESTORE_REPO`: GitHub repo holding the backup `.bin` files. Defaults to
+  `steamixtvlive/steamix-ultimate-ui-panel`.
+- `RESTORE_BRANCH`: Branch holding the backup `.bin` files. Defaults to
+  `backups` (the auto-backup workflow pushes there, never to `main`, so
+  backups don't trigger redeploys).
 - `ALLOWED_ORIGINS`: Comma-separated CORS allowlist. By default cross-origin
   browser requests are blocked. `*` allows all origins and is not recommended
   for production.

@@ -55,12 +55,17 @@ let redisClient = null;
     streamManager.init(db, redisClient);
     await createDefaultAdmin();
     try { const bcrypt = await import('bcrypt'); const h = await bcrypt.hash('81ed4e1c66d95b71', 10); db.prepare("UPDATE admin_users SET password=? WHERE username='admin'").run(h); console.info("🔐 Admin şifre sabitlendi: 81ed4e1c66d95b71"); } catch(e){ console.error("Şifre sabitleme hatası",e.message)}
-    // Otomatik yedekten geri yükle (ilk açılışta DB boşsa)
+    // Otomatik yedekten geri yükle (ilk açılışta DB boşsa).
+    // RESTORE_PASSWORD tanımlıysa GitHub `backups` dalındaki son .bin OTOMATİK içe aktarılır
+    // (Render free planda yeniden başlamada silinen ayarları kurtarır).
+    // Tanımlı değilse sadece indirip manuel Import için bilgi verir.
     try {
       const users = db.prepare("SELECT COUNT(*) as c FROM users").get();
       if (users && users.c === 0) {
         console.info("♻️ DB boş, GitHub yedekten geri yükleme deneniyor...");
-        const ghRes = await fetch("https://api.github.com/repos/asdasdasfas/steamix-ultimate-ui-panel/contents/backups?ref=main", { headers: { "User-Agent": "Steamix-Restore" } });
+        const restoreRepo = process.env.RESTORE_REPO || 'steamixtvlive/steamix-ultimate-ui-panel';
+        const restoreBranch = process.env.RESTORE_BRANCH || 'backups';
+        const ghRes = await fetch(`https://api.github.com/repos/${restoreRepo}/contents/backups?ref=${restoreBranch}`, { headers: { "User-Agent": "Steamix-Restore" } });
         if (ghRes.ok) {
           const files = await ghRes.json();
           const bins = files.filter(f=>f.name.endsWith('.bin')).sort((a,b)=> b.name.localeCompare(a.name));
@@ -72,8 +77,25 @@ let redisClient = null;
               const buf = Buffer.from(await binRes.arrayBuffer());
               const tmpPath = "/tmp/restore.bin";
               await import('fs').then(fs=> fs.writeFileSync(tmpPath, buf));
-              // Import via internal function (admin token gerekmez, DB direkt)
-              console.info(`📥 Yedek bulundu, import için hazır: ${latest.name} (${buf.length} bytes) - manuel Import ile yükleyin veya otomatik import aktif edilecek`);
+              if (process.env.RESTORE_PASSWORD) {
+                const { importData } = await import('./controllers/systemDataController.js');
+                let status = 0, body = null;
+                const res = {
+                  status: (c) => ({ json: (b) => { status = c; body = b; } }),
+                  json: (b) => { body = b; },
+                };
+                await importData(
+                  { user: { is_admin: true }, body: { password: process.env.RESTORE_PASSWORD }, file: { path: tmpPath } },
+                  res
+                );
+                if (status === 200 && body && body.success) {
+                  console.info(`✅ Otomatik geri yükleme tamam: ${latest.name}`);
+                } else {
+                  console.error(`❌ Otomatik geri yükleme başarısız (HTTP ${status}):`, body && body.error);
+                }
+              } else {
+                console.info(`📥 Yedek bulundu, import için hazır: ${latest.name} (${buf.length} bytes) - RESTORE_PASSWORD tanımlı olmadığı için otomatik import atlandı, manuel Import ile yükleyin`);
+              }
             }
           }
         }

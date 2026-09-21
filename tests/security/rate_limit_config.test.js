@@ -71,6 +71,7 @@ describe('rate limit configuration', () => {
   });
 
   it('keeps script CSP strict while allowing the existing inline-style UI', async () => {
+
     const { securityHeaders } = await loadSecurityMiddleware();
     const app = appWith(securityHeaders);
 
@@ -81,5 +82,30 @@ describe('rate limit configuration', () => {
     expect(csp).toContain("script-src 'self'");
     expect(csp).toContain("script-src-attr 'none'");
     expect(csp).toContain("style-src 'self' 'unsafe-inline'");
+  });
+
+  it('skips rate limiting for whitelisted IPs', async () => {
+    vi.resetModules();
+    vi.doMock('../../src/database/db.js', () => ({
+      default: {
+        prepare: vi.fn(() => ({
+          get: vi.fn(() => ({ id: 7 })),
+          run: vi.fn()
+        }))
+      }
+    }));
+    process.env.API_RATE_LIMIT_MAX = '2';
+    process.env.API_RATE_LIMIT_WINDOW_MS = '60000';
+    try {
+      const { apiLimiter } = await import('../../src/middleware/security.js');
+      const app = appWith(apiLimiter);
+      for (let i = 0; i < 5; i += 1) {
+        const response = await request(app).get('/limited');
+        expect(response.status).toBe(200);
+      }
+    } finally {
+      delete process.env.API_RATE_LIMIT_MAX;
+      delete process.env.API_RATE_LIMIT_WINDOW_MS;
+    }
   });
 });

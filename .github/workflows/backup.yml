@@ -2,7 +2,7 @@ name: Auto Backup
 
 on:
   schedule:
-    - cron: '*/3 * * * *'  # TEST: her 3 dk (sonra 15'e alinacak)
+    - cron: '*/15 * * * *'  # 15 dk: main'e dokunmaz, backups dalina gider (Render redeploy tetiklemez)
   workflow_dispatch:
 
 permissions:
@@ -66,10 +66,10 @@ jobs:
           if [ "$first" = "{" ]; then echo "export hata dondu:"; cat "$f"; echo ""; exit 1; fi
           test -s "$f" || (echo "yedek bos"; exit 1)
           echo "TAMAM: $f"
-      - name: Commit backup
+      - name: Commit backup (backups dalina - main'e dokunmaz, Render yeniden baslamaz)
         run: |
           git config user.name "backup-bot"
           git config user.email "backup@steamix.local"
           git add backups/
           git diff --cached --quiet && echo "degisiklik yok" || git commit -m "auto backup $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          git push || echo "push yapilmadi"
+          git push --force origin HEAD:backups || echo "push yapilmadi"

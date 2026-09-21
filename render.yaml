@@ -12,3 +12,7 @@ services:
         value: /data
       - key: PORT
         value: 10000
+      - key: TRUST_PROXY
+        value: 1
+      - key: DISABLE_CLUSTER
+        value: true

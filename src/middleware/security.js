@@ -49,8 +49,31 @@ function buildSafeRateLimiter(config) {
     ...config,
     // Normalize IPs so IPv4-mapped IPv6 (e.g. ::ffff:1.2.3.4) cannot bypass limits.
     keyGenerator: (req) => ipKeyGenerator(cleanIp(req.ip) || req.ip || 'unknown'),
+    // Whitelisted IPs (panelden yönetilir) hiz sinirina takilmaz:
+    // aksi halde Render gibi tek proxy IP'si arkasında admin de 429 yerdi.
+    skip: (req) => isWhitelistedIp(req),
     validate: { trustProxy: false }
   });
+}
+
+// DB'yi her istekte yormamak icin kisa sureli bellek cache (whitelist panelden degisebilir).
+const whitelistCache = new Map();
+const WHITELIST_CACHE_MS = 30 * 1000;
+
+function isWhitelistedIp(req) {
+  try {
+    const ip = cleanIp(req.ip) || req.ip;
+    if (!ip) return false;
+    const now = Date.now();
+    const cached = whitelistCache.get(ip);
+    if (cached && now - cached.at < WHITELIST_CACHE_MS) return cached.hit;
+    const hit = !!db.prepare('SELECT id FROM whitelisted_ips WHERE ip = ?').get(ip);
+    if (whitelistCache.size > 5000) whitelistCache.clear();
+    whitelistCache.set(ip, { at: now, hit });
+    return hit;
+  } catch {
+    return false;
+  }
 }
 
 // Rate limiting for authentication endpoints
