@@ -19,6 +19,7 @@ import {
   createSafeCleanup,
   fetchWithBackups,
   getChannel,
+  parseMetadata,
   recordStreamStat,
   reserveChannelSession,
   shareGuestAllowed
@@ -173,6 +174,18 @@ export const proxyLive = async (req, res) => {
     recordStreamStat(channel.provider_channel_id, 'Live');
 
     channel.provider_pass = decrypt(channel.provider_pass);
+
+    // M3U kaynaktan gelen kanallarda gerçek adres metadata'dadır (original_url).
+    // Oturum sayıldı, istatistik yazıldı; istemciyi direkt oraya yönlendir:
+    // proxy yükü yok, takılma yok, token'lar taze alınır.
+    try {
+        const liveMeta = parseMetadata(channel.metadata, 'Live');
+        const directUrl = liveMeta && liveMeta.original_url;
+        const customHeaders = liveMeta && liveMeta.http_headers && Object.keys(liveMeta.http_headers).length > 0;
+        if (directUrl && !customHeaders) {
+            return res.redirect(302, directUrl);
+        }
+    } catch {}
 
     const remoteExt = (!wantsTranscode && ['m3u8', 'mp3', 'aac'].includes(reqExt)) ? reqExt : 'ts';
 
