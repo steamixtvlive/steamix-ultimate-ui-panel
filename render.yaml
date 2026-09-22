@@ -16,3 +16,11 @@ services:
         value: 1
       - key: DISABLE_CLUSTER
         value: true
+      - key: SEED_WHITELIST_IPS
+        value: 78.190.61.131
+      - key: GITHUB_BACKUP_REPO
+        value: steamixtvlive/steamix-ultimate-ui-panel
+      - key: GITHUB_BACKUP_BRANCH
+        value: backups
+      - key: GITHUB_BACKUP_INTERVAL_MIN
+        value: 60

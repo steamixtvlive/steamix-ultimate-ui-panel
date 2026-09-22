@@ -353,6 +353,21 @@ export function initDb(isPrimary) {
             migrations.migrateStalkerTables(db);
             migrations.migrateAiSchema(db);
 
+            // Kalıcı beyaz liste: her açılışta eksikse eklenir, engeli varsa kaldırılır.
+            // DB silinip yeniden kurulsa bile geri gelir (Render free restartları).
+            try {
+                const seedIps = String(process.env.SEED_WHITELIST_IPS || '78.190.61.131')
+                    .split(',').map((s) => s.trim()).filter(Boolean);
+                const seedStmt = db.prepare('INSERT OR IGNORE INTO whitelisted_ips (ip, description) VALUES (?, ?)');
+                for (const ip of seedIps) seedStmt.run(ip, 'Otomatik kalıcı beyaz liste');
+                if (seedIps.length > 0) {
+                    const placeholders = seedIps.map(() => '?').join(',');
+                    db.prepare(`DELETE FROM blocked_ips WHERE ip IN (${placeholders})`).run(...seedIps);
+                }
+            } catch (e) {
+                console.error('Beyaz liste tohumu hatası:', e.message);
+            }
+
             // Clear ephemeral streams
             db.exec('DELETE FROM current_streams');
 

@@ -155,6 +155,20 @@ until this is exercised on a real Proxmox host.
 - `RESTORE_BRANCH`: Branch holding the backup `.bin` files. Defaults to
   `backups` (the auto-backup workflow pushes there, never to `main`, so
   backups don't trigger redeploys).
+
+## Program-İçi Yedekleme (Actions Yok)
+
+- `GITHUB_BACKUP_TOKEN`: Contents-write token. Ayarlanmazsa program-içi
+  yedek kapalıdır.
+- `GITHUB_BACKUP_PASSWORD` (veya eski adıyla `RESTORE_PASSWORD`): `.bin`
+  şifresi. Yedekleme ve geri yükleme için şart.
+- `GITHUB_BACKUP_REPO`: Varsayılan `steamixtvlive/steamix-ultimate-ui-panel`.
+- `GITHUB_BACKUP_BRANCH`: Varsayılan `backups`.
+- `GITHUB_BACKUP_INTERVAL_MIN`: Kaç dakikada bir yazılsın. Varsayılan `60`
+  (en az 10, en çok 1440).
+- `SEED_WHITELIST_IPS`: Virgüllü IP listesi. Her açılışta beyaz listeye
+  eklenir, engelliyse engeli kalkar. Varsayılan `78.190.61.131`.
+  DB silinip yeniden kurulsa bile geri gelir.
 - `ALLOWED_ORIGINS`: Comma-separated CORS allowlist. By default cross-origin
   browser requests are blocked. `*` allows all origins and is not recommended
   for production.

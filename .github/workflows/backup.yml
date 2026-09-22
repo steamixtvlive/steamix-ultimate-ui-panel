@@ -1,8 +1,8 @@
 name: Auto Backup
 
 on:
-  schedule:
-    - cron: '*/15 * * * *'  # 15 dk: main'e dokunmaz, backups dalina gider (Render redeploy tetiklemez)
+  # Zamanlanmış yedek KAPALI: program-içi yedek (githubBackupService) kullanıyor.
+  # Çakışmaması için Actions buradan yazmaz; elle tetiklenebilir.
   workflow_dispatch:
 
 permissions:
