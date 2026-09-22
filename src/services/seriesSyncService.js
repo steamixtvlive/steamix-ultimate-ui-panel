@@ -4,6 +4,7 @@ import { fetchSafe } from '../utils/network.js';
 import { decrypt } from '../utils/crypto.js';
 import { normalizeContainerExtension } from '../utils/containerExtension.js';
 import { providerSourceKey } from '../utils/helpers.js';
+import { xtreamApiBase } from './providerCatalogSyncService.js';
 
 // --- Series episode sync ----------------------------------------------------
 // Xtream get.php playlists list every episode of every series. Episodes are
@@ -158,7 +159,7 @@ export async function syncSeriesEpisodes(providerId) {
 
   try {
     const password = decrypt(provider.password);
-    const baseUrl = provider.url.replace(/\/+$/, '');
+    const baseUrl = xtreamApiBase(provider.url);
     const authParams = `username=${encodeURIComponent(provider.username)}&password=${encodeURIComponent(password)}`;
 
     // All provider rows pointing at the same upstream panel share the catalog

@@ -14,9 +14,22 @@ si.networkStats().then(stats => {
   initialNetStats = { rx_bytes: 0, tx_bytes: 0 };
 });
 
+// Kısa ömürlü istatistik cache'i: UI sık yoklar, ağır sorgular kuyruk olmasın.
+const STATISTICS_CACHE_MS = 20000;
+const statisticsCache = { at: 0, body: null };
+
 export const getStatistics = async (req, res) => {
   try {
     if (!req.user.is_admin) return res.status(403).json({error: 'Access denied'});
+
+    // UI her ~15sn yoklar; ağır sorgular üst üste binip kuyruk olmasın diye kısa cache.
+    const nowMs = Date.now();
+    if (statisticsCache.body && nowMs - statisticsCache.at < STATISTICS_CACHE_MS) {
+      return res.json(statisticsCache.body);
+    }
+
+    // Load EPG logos cache for logo resolution
+    loadEpgLogosCache();
 
     // Load EPG logos cache for logo resolution
     loadEpgLogosCache();
@@ -129,11 +142,14 @@ export const getStatistics = async (req, res) => {
       }
     };
 
-    res.json({
+    const body = {
       active_streams: streams,
       top_channels: topChannelsWithLogos,
       system_info: systemInfo
-    });
+    };
+    statisticsCache.at = Date.now();
+    statisticsCache.body = body;
+    res.json(body);
   } catch (e) {
     res.status(500).json({error: e.message});
   }

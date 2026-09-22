@@ -706,8 +706,12 @@ export async function performSync(providerId, userId, options = {}) {
     // Invalidate cache since channels might have been added/updated
     clearChannelsCache(userId);
 
-    // Pre-populate provider icon cache for faster logo lookups
-    prePopulateProviderIconCache(providerId);
+    // Pre-populate provider icon cache for faster logo lookups.
+    // Arka planda: 20bin+ logolu sağlayıcıda dakikalar sürer, UI yanıtını bekletmesin.
+    setImmediate(() => {
+        try { prePopulateProviderIconCache(providerId); }
+        catch (e) { console.error('Icon cache background failed:', e.message); }
+    });
 
     // Log success
     db.prepare(`

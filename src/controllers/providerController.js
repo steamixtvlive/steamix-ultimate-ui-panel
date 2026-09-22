@@ -3,6 +3,7 @@ import { fetchSafe } from '../utils/network.js';
 import { encrypt, decrypt } from '../utils/crypto.js';
 import { isSafeUrl, redactUrl, providerSourceKey } from '../utils/helpers.js';
 import { performSync, checkProviderExpiry, deleteProviderChannelCascade } from '../services/syncService.js';
+import { xtreamApiBase } from '../services/providerCatalogSyncService.js';
 import { updateProviderEpg } from '../services/epgService.js';
 import { clearChannelsCache } from '../services/cacheService.js';
 import { parseTimeshiftTimezone } from '../utils/timezone.js';
@@ -161,7 +162,7 @@ export const createProvider = async (req, res) => {
 
     if (!finalEpgUrl) {
       try {
-        const baseUrl = url.trim().replace(/\/+$/, '');
+        const baseUrl = xtreamApiBase(url.trim());
         const discoveredUrl = `${baseUrl}/xmltv.php?username=${encodeURIComponent(username.trim())}&password=${encodeURIComponent(password.trim())}`;
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 5000);

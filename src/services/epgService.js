@@ -3,10 +3,23 @@ import db from '../database/epgDb.js';
 import mainDb from '../database/db.js';
 import { EPG_DB_PATH } from '../config/constants.js';
 import { invalidateEpgLogosCache } from './logoResolver.js';
+import { decrypt } from '../utils/crypto.js';
+import { xtreamApiBase } from './providerCatalogSyncService.js';
 
 import { importEpgFromUrl } from './epgImportService.js';
 
 export { importEpgFromUrl };
+
+// Eski sürüm artığı bozuk EPG linkini onar:
+// "...get.php?.../xmltv.php?..." → host kökünden temiz xmltv.php linki.
+function sanitizedProviderEpgUrl(provider) {
+    const stored = (provider.epg_url || '').trim();
+    if (stored && !/get\.php.*\/xmltv\.php/i.test(stored)) return stored;
+    let password = '';
+    try { password = decrypt(provider.password) || ''; } catch { password = ''; }
+    const auth = `username=${encodeURIComponent(provider.username || '')}&password=${encodeURIComponent(password)}`;
+    return `${xtreamApiBase(provider.url)}/xmltv.php?${auth}`;
+}
 
 export async function updateEpgSource(sourceId, skipPrune = false) {
     const source = mainDb.prepare('SELECT * FROM epg_sources WHERE id = ?').get(sourceId);
@@ -29,10 +42,11 @@ export async function updateProviderEpg(providerId, skipPrune = false) {
     const now = Math.floor(Date.now() / 1000);
 
     try {
-        if (provider.epg_url && provider.epg_url.trim() !== '') {
-            await importEpgFromUrl(provider.epg_url, 'provider', providerId);
-        } else {
+        const stored = (provider.epg_url || '').trim();
+        if (!stored) {
             await importChannelsFromProvider(providerId);
+        } else {
+            await importEpgFromUrl(sanitizedProviderEpgUrl(provider), 'provider', providerId);
         }
 
         mainDb.prepare('UPDATE providers SET last_epg_update = ? WHERE id = ?').run(now, providerId);
