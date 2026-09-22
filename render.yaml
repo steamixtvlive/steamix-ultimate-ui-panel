@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: xteamcodes
+    name: xtreamcodes
     env: node
     plan: free
     buildCommand: npm ci
