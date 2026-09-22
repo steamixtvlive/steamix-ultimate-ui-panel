@@ -2,6 +2,7 @@ import db from '../database/db.js';
 import { fetchSafe } from '../utils/network.js';
 import { decrypt } from '../utils/crypto.js';
 import { isAdultCategory } from '../utils/helpers.js';
+import { xtreamApiBase } from '../services/providerCatalogSyncService.js';
 
 export const getProviderChannels = (req, res) => {
   try {
@@ -81,7 +82,7 @@ export const getProviderCategories = async (req, res) => {
     const decryptedPassword = decrypt(provider.password);
 
     let categories = [];
-    const baseUrl = provider.url.replace(/\/+$/, '');
+    const baseUrl = xtreamApiBase(provider.url);
     const authParams = `username=${encodeURIComponent(provider.username)}&password=${encodeURIComponent(decryptedPassword)}`;
     let action = 'get_live_categories';
 
@@ -98,13 +99,31 @@ export const getProviderCategories = async (req, res) => {
       console.error('Failed to fetch categories:', e);
     }
 
-    if (!categories || categories.length === 0) {
-      return res.json([]);
-    }
-
     let streamType = 'live';
     if(type === 'movie') streamType = 'movie';
     if(type === 'series') streamType = 'series';
+
+    if (!categories || categories.length === 0) {
+      // Canlı API boş dönerse (M3U linki / API kapalı): yerelde senkronlanan
+      // kategorileri göster ki liste boş kalmasın.
+      const local = db.prepare(`
+        SELECT original_category_id AS category_id, COUNT(*) AS channel_count
+        FROM provider_channels
+        WHERE provider_id = ? AND COALESCE(stream_type, 'live') = ?
+        GROUP BY original_category_id
+        ORDER BY original_category_id
+      `).all(id, streamType);
+      return res.json(local.map(r => {
+        const cid = Number(r.category_id) || 0;
+        return {
+          category_id: cid,
+          category_name: cid === 0 ? 'Genel' : `Kategori ${cid}`,
+          channel_count: r.channel_count,
+          is_adult: false,
+          category_type: type
+        };
+      }));
+    }
 
     // ⚡ Bolt: Extract category IDs and use an IN clause to fetch channel counts only for relevant categories.
     // Also remove redundant DISTINCT and ORDER BY to reduce SQLite overhead.

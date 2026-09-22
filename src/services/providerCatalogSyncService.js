@@ -3,14 +3,25 @@ import { fetchSafe } from '../utils/network.js';
 import { parseM3uStream } from '../utils/playlistParser.js';
 
 export function createXtreamClient(provider) {
-  let baseUrl = (provider.url || '').trim();
-  if (!/^https?:\/\//i.test(baseUrl)) baseUrl = 'http://' + baseUrl;
-  baseUrl = baseUrl.replace(/\/+$/, '');
+  const baseUrl = xtreamApiBase((provider.url || '').trim());
   return new Xtream({ url: baseUrl, username: provider.username, password: provider.password });
 }
 
+// M3U linkiyle eklenen sağlayıcılarda (get.php / .m3u) API çağrıları host
+// köküne yapılır; yoksa player_api.php çöp URL'ye gider, dakikalarca asılı kalır.
+export function xtreamApiBase(rawUrl) {
+  try {
+    const normalized = /^https?:\/\//i.test(rawUrl || '') ? rawUrl : `http://${rawUrl || ''}`;
+    const u = new URL(normalized);
+    if (!u.host) throw new Error('no host');
+    return `${u.protocol}//${u.host}`;
+  } catch {
+    return (rawUrl || '').replace(/\/+$/, '');
+  }
+}
+
 export async function fetchProviderCatalog(provider, xtream) {
-  const baseUrl = provider.url.replace(/\/+$/, '');
+  const baseUrl = xtreamApiBase(provider.url);
   const authParams = `username=${encodeURIComponent(provider.username)}&password=${encodeURIComponent(provider.password)}`;
   // Provider'a ozel User-Agent (panelde provider formunda girilir); bazi hostlar
   // varsayilan node UA'yi engelleyip bos doner -> 0 kanal. Bos ise gonderme.

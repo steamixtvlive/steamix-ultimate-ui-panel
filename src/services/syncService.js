@@ -6,7 +6,7 @@ import { isAdultCategory } from '../utils/helpers.js';
 import { normalizeContainerExtension } from '../utils/containerExtension.js';
 import { prePopulateProviderIconCache } from './logoResolver.js';
 import { isTrustedMappingAssignment } from './userChannelAssignmentService.js';
-import { createXtreamClient, fetchProviderCatalog } from './providerCatalogSyncService.js';
+import { createXtreamClient, fetchProviderCatalog, xtreamApiBase } from './providerCatalogSyncService.js';
 import { captureSyncSnapshot, recordSyncSnapshot, scheduleSyncFollowups } from './ai/syncHistory.js';
 
 /**
@@ -105,7 +105,7 @@ export async function checkProviderExpiry(providerId) {
     if (!provider) return null;
 
     const password = decrypt(provider.password);
-    const baseUrl = provider.url.replace(/\/+$/, '');
+    const baseUrl = xtreamApiBase(provider.url);
     const authParams = `username=${encodeURIComponent(provider.username)}&password=${encodeURIComponent(password)}`;
 
     // Use fetch directly to get user_info
