@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: steamix-ultimate-ui-panel
+    name: xteamcodes
     env: node
     plan: free
     buildCommand: npm ci
