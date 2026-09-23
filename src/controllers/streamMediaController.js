@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import ffmpeg from 'fluent-ffmpeg';
 import streamManager from '../services/streamManager.js';
 import { getXtreamUser } from '../services/authService.js';
+import { xtreamApiBase } from '../services/providerCatalogSyncService.js';
 import { normalizeContainerExtension } from '../utils/containerExtension.js';
 import { episodeNameCache } from '../services/episodeCache.js';
 import { decrypt } from '../utils/crypto.js';
@@ -46,7 +47,7 @@ export const proxyMovie = async (req, res) => {
     const sessionName = `${channel.name} (VOD)`;
 
     const sourcePassword = decrypt(channel.provider_pass);
-    let base = channel.provider_url.replace(/\/+$/, '');
+    let base = xtreamApiBase(channel.provider_url);
     let remoteUrl = `${base}/movie/${encodeURIComponent(channel.provider_user)}/${encodeURIComponent(sourcePassword)}/${channel.remote_stream_id}.${ext}`;
 
     let backupStreamUrls = buildBackupUrls(channel.backup_urls, (bBase) => {
@@ -218,7 +219,7 @@ export const proxySeries = async (req, res) => {
     }
 
     const sourceProvider = { ...provider, password: decrypt(provider.password) };
-    let base = sourceProvider.url.replace(/\/+$/, '');
+    let base = xtreamApiBase(sourceProvider.url);
     let remoteUrl = `${base}/series/${encodeURIComponent(sourceProvider.username)}/${encodeURIComponent(sourceProvider.password)}/${remoteEpisodeId}.${ext}`;
     let backupStreamUrls = buildBackupUrls(sourceProvider.backup_urls, (bBase) => {
         return `${bBase}/series/${encodeURIComponent(sourceProvider.username)}/${encodeURIComponent(sourceProvider.password)}/${remoteEpisodeId}.${ext}`;
@@ -243,7 +244,7 @@ export const proxySeries = async (req, res) => {
 
     availableProvider.password = decrypt(availableProvider.password);
 
-    base = availableProvider.url.replace(/\/+$/, '');
+    base = xtreamApiBase(availableProvider.url);
     remoteUrl = `${base}/series/${encodeURIComponent(availableProvider.username)}/${encodeURIComponent(availableProvider.password)}/${remoteEpisodeId}.${ext}`;
     backupStreamUrls = buildBackupUrls(availableProvider.backup_urls, (bBase) => {
         return `${bBase}/series/${encodeURIComponent(availableProvider.username)}/${encodeURIComponent(availableProvider.password)}/${remoteEpisodeId}.${ext}`;

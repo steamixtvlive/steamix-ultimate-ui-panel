@@ -5,6 +5,7 @@ import https from 'https';
 import ffmpeg from 'fluent-ffmpeg';
 import streamManager from '../services/streamManager.js';
 import { getXtreamUser } from '../services/authService.js';
+import { xtreamApiBase } from '../services/providerCatalogSyncService.js';
 import { getBaseUrl, isSafeUrl, safeLookup, redactUrl } from '../utils/helpers.js';
 import { fetchSafe } from '../utils/network.js';
 import { decrypt, encrypt } from '../utils/crypto.js';
@@ -77,7 +78,7 @@ export const proxyMpd = async (req, res) => {
 
         ({ headers } = buildStreamHeaders(channel.user_agent, channel.metadata, 'MPD'));
         channel.provider_pass = decrypt(channel.provider_pass);
-        const base = channel.provider_url.replace(/\/+$/, '');
+        const base = xtreamApiBase(channel.provider_url);
         upstreamUrl = `${base}/live/${encodeURIComponent(channel.provider_user)}/${encodeURIComponent(channel.provider_pass)}/${channel.remote_stream_id}.mpd`;
 
         backupStreamUrls = buildBackupUrls(channel.backup_urls, (bBase) => {

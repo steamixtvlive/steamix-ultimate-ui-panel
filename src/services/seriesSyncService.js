@@ -128,7 +128,7 @@ export async function syncSeriesEpisode(providerId, seriesRemoteId) {
   const sourceKey = providerSourceKey(series.url);
   if (!sourceKey) return { error: 'Provider has no URL' };
   const password = decrypt(series.password);
-  const baseUrl = series.url.replace(/\/+$/, '');
+  const baseUrl = xtreamApiBase(series.url);
   const authParams = `username=${encodeURIComponent(series.username)}&password=${encodeURIComponent(password)}`;
   const episodeCount = await fetchSeriesEpisodesOnce(sourceKey, sid, () =>
     fetchSeriesEpisodes(

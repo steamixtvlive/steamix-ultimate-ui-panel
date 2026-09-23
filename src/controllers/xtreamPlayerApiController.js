@@ -1,5 +1,6 @@
 import db from '../database/db.js';
 import { getXtreamUser } from '../services/authService.js';
+import { xtreamApiBase } from '../services/providerCatalogSyncService.js';
 import { getEpgPrograms, getEpgProgramsForChannels } from '../services/epgService.js';
 import { decrypt } from '../utils/crypto.js';
 import { providerSourceKey } from '../utils/helpers.js';
@@ -292,7 +293,7 @@ export const playerApi = async (req, res) => {
       if (shareScope.allowedSet && !shareScope.allowedSet.has(Number(channel.user_channel_id))) return res.json({});
 
       const provPass = decrypt(channel.password);
-      const baseUrl = channel.url.replace(/\/+$/, '');
+      const baseUrl = xtreamApiBase(channel.url);
       const remoteSeriesId = channel.remote_stream_id;
 
       try {
@@ -384,7 +385,7 @@ export const playerApi = async (req, res) => {
       if (shareScope.allowedSet && !shareScope.allowedSet.has(Number(channel.user_channel_id))) return res.json({});
 
       const provPass = decrypt(channel.password);
-      const baseUrl = channel.url.replace(/\/+$/, '');
+      const baseUrl = xtreamApiBase(channel.url);
       const remoteVodId = channel.remote_stream_id;
 
       try {
