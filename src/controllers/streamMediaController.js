@@ -69,7 +69,7 @@ export const proxyMovie = async (req, res) => {
     if (!await reserveChannelSession(connectionId, user, channel, req, res, sessionName)) return;
 
     channel.provider_pass = decrypt(channel.provider_pass);
-    base = channel.provider_url.replace(/\/+$/, '');
+    base = xtreamApiBase(channel.provider_url);
     remoteUrl = `${base}/movie/${encodeURIComponent(channel.provider_user)}/${encodeURIComponent(channel.provider_pass)}/${channel.remote_stream_id}.${ext}`;
     backupStreamUrls = buildBackupUrls(channel.backup_urls, (bBase) => {
         return `${bBase}/movie/${encodeURIComponent(channel.provider_user)}/${encodeURIComponent(channel.provider_pass)}/${channel.remote_stream_id}.${ext}`;

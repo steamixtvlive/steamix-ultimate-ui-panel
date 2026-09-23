@@ -190,7 +190,7 @@ export const proxyLive = async (req, res) => {
 
     const remoteExt = (!wantsTranscode && ['m3u8', 'mp3', 'aac'].includes(reqExt)) ? reqExt : 'ts';
 
-    const base = channel.provider_url.replace(/\/+$/, '');
+    const base = xtreamApiBase(channel.provider_url);
     const remoteUrl = `${base}/live/${encodeURIComponent(channel.provider_user)}/${encodeURIComponent(channel.provider_pass)}/${channel.remote_stream_id}.${remoteExt}`;
 
     const backupStreamUrls = buildBackupUrls(channel.backup_urls, (bBase) => {
@@ -578,7 +578,7 @@ export const proxyTimeshift = async (req, res) => {
 
     channel.provider_pass = decrypt(channel.provider_pass);
 
-    const base = channel.provider_url.replace(/\/+$/, '');
+    const base = xtreamApiBase(channel.provider_url);
     const reqExt = req.path.endsWith('.m3u8') ? 'm3u8' : 'ts';
     const upstreamStart = epochStart === null
       ? start
