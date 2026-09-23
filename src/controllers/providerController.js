@@ -160,22 +160,38 @@ export const createProvider = async (req, res) => {
       }
     }
 
-    if (!finalEpgUrl) {
-      try {
-        const baseUrl = xtreamApiBase(url.trim());
-        const discoveredUrl = `${baseUrl}/xmltv.php?username=${encodeURIComponent(username.trim())}&password=${encodeURIComponent(password.trim())}`;
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 5000);
-        const resp = await fetchSafe(discoveredUrl, { method: 'HEAD', signal: controller.signal });
-        clearTimeout(timeout);
-
-        if (resp.ok) {
-          finalEpgUrl = discoveredUrl;
+    // EPG yoklama + max_connections sorgusu paralel: yavas agda ekleme takilmasin.
+    // Ikisi de hatasiz atlatilabilir (null/boş doner), ekleme asla bunlar yuzunden ölmez.
+    const needEpgProbe = !finalEpgUrl;
+    const needMaxConn = max_connections === undefined || max_connections === '';
+    const [probedEpgUrl, fetchedLimit] = await Promise.all([
+      (async () => {
+        if (!needEpgProbe) return null;
+        try {
+          const baseUrl = xtreamApiBase(url.trim());
+          const discoveredUrl = `${baseUrl}/xmltv.php?username=${encodeURIComponent(username.trim())}&password=${encodeURIComponent(password.trim())}`;
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 5000);
+          try {
+            const resp = await fetchSafe(discoveredUrl, { method: 'HEAD', signal: controller.signal });
+            return resp.ok ? discoveredUrl : null;
+          } finally {
+            clearTimeout(timeout);
+          }
+        } catch {
+          return null;
         }
-      } catch {
-        /* ignore */
-      }
-    }
+      })(),
+      (async () => {
+        if (!needMaxConn) return null;
+        try {
+          return await fetchProviderDetails(url, username, password);
+        } catch {
+          return null;
+        }
+      })()
+    ]);
+    if (probedEpgUrl) finalEpgUrl = probedEpgUrl;
 
     // Auto-fetch max_connections if not provided explicitly (it could be an empty string)
     // If the user explicitly sets it to "0", we treat it as 0 (unlimited)
@@ -185,7 +201,6 @@ export const createProvider = async (req, res) => {
     } else {
         // Only auto-fetch if the field was left empty
         finalMaxConnections = 0;
-        const fetchedLimit = await fetchProviderDetails(url, username, password);
         if (fetchedLimit !== null) {
             finalMaxConnections = fetchedLimit;
         }
