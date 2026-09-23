@@ -102,15 +102,26 @@ async function downloadBackupFile(url, token) {
 export async function restoreLatestBackupFromGithub() {
   const cfg = githubBackupConfig();
   const headers = githubHeaders(cfg.token);
-  const listRes = await fetch(`${API}/repos/${cfg.repo}/contents/backups?ref=${cfg.branch}`, { headers });
-  if (!listRes.ok) return { restored: false, reason: `Liste okunamadı (HTTP ${listRes.status})` };
-  const files = await listRes.json();
-  const bins = (Array.isArray(files) ? files : [])
-    .filter((f) => f && typeof f.name === 'string' && f.name.endsWith('.bin'))
-    .sort((a, b) => b.name.localeCompare(a.name));
-  if (bins.length === 0) return { restored: false, reason: 'Yedek bulunamadı' };
+  // Önce backups dalı, yoksa main dalındaki eski yedekler (geri uyumluluk).
+  const branches = [cfg.branch];
+  if (!branches.includes('main')) branches.push('main');
+  let files = null;
+  let usedBranch = null;
+  for (const branch of branches) {
+    const listRes = await fetch(`${API}/repos/${cfg.repo}/contents/backups?ref=${branch}`, { headers });
+    if (!listRes.ok) continue;
+    const listed = await listRes.json();
+    const bins = (Array.isArray(listed) ? listed : [])
+      .filter((f) => f && typeof f.name === 'string' && f.name.endsWith('.bin'));
+    if (bins.length > 0) {
+      files = bins;
+      usedBranch = branch;
+      break;
+    }
+  }
+  if (!files) return { restored: false, reason: 'Yedek bulunamadı' };
   if (!cfg.password) return { restored: false, reason: 'Şifre yok (GITHUB_BACKUP_PASSWORD)' };
-  const latest = bins[0];
+  const latest = [...files].sort((a, b) => b.name.localeCompare(a.name))[0];
   const buf = await downloadBackupFile(latest.download_url, cfg.token);
   const tmpPath = path.join(os.tmpdir(), `restore-${Date.now()}.bin`);
   fs.writeFileSync(tmpPath, buf);

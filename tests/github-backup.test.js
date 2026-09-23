@@ -159,6 +159,43 @@ describe('program-ici GitHub yedek', () => {
     expect(row?.username).toBe('geri-yuklenen');
   });
 
+  it('backups dali bossa main dalindaki yedege duser', async () => {
+    setGhEnv();
+    const bin = buildBin({
+      version: 2,
+      assignment_provenance_version: 1,
+      passwords_plaintext: true,
+      users: [{ id: 98, username: 'mainden-gelen', password: 'x', plain_password: null }],
+      providers: [],
+      categories: [],
+      channels: [],
+      mappings: [],
+      sync_configs: [],
+    });
+    vi.stubGlobal('fetch', async (url) => {
+      if (String(url).includes('?ref=backups')) {
+        return { ok: false, status: 404, json: async () => ({}) };
+      }
+      if (String(url).includes('?ref=main')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => [{ name: 'backup-20260916-1645.bin', download_url: 'https://x/eski.bin' }]
+        };
+      }
+      return {
+        ok: true,
+        status: 200,
+        arrayBuffer: async () => bin.buffer.slice(bin.byteOffset, bin.byteOffset + bin.byteLength)
+      };
+    });
+    const res = await restoreLatestBackupFromGithub();
+    expect(res.restored).toBe(true);
+    expect(res.name).toBe('backup-20260916-1645.bin');
+    const row = db.prepare('SELECT username FROM users WHERE username = ?').get('mainden-gelen');
+    expect(row?.username).toBe('mainden-gelen');
+  });
+
   it('databaseIsEmpty bos/dolu ayirt eder', () => {
     expect(databaseIsEmpty()).toBe(false);
     expect(githubBackupConfig().branch).toBe('backups');
