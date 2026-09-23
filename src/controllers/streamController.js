@@ -23,7 +23,8 @@ import {
   parseMetadata,
   recordStreamStat,
   reserveChannelSession,
-  shareGuestAllowed
+  shareGuestAllowed,
+  wantsDirectUpstream
 } from './streamControllerHelpers.js';
 import { proxyMovie, proxySeries } from './streamMediaController.js';
 
@@ -198,6 +199,11 @@ export const proxyLive = async (req, res) => {
     }, 'Live');
 
     const { headers: fetchHeaders } = buildStreamHeaders(channel.user_agent, channel.metadata, 'Live');
+
+    // Kota modu: ?direct=1 → baytlar upstream'den insin, Render sadece 302 versin.
+    if (wantsDirectUpstream(req)) {
+        return res.redirect(302, remoteUrl);
+    }
 
     const shouldTranscode = (req.query.transcode === 'true') || (reqExt === 'mp4');
 

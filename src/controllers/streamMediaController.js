@@ -23,7 +23,8 @@ import {
   reserveProviderSession,
   sendSubtitleTrack,
   sendTrackInfo,
-  shareGuestAllowed
+  shareGuestAllowed,
+  wantsDirectUpstream
 } from './streamControllerHelpers.js';
 
 export const proxyMovie = async (req, res) => {
@@ -77,6 +78,11 @@ export const proxyMovie = async (req, res) => {
     ({ headers } = buildStreamHeaders(channel.user_agent, channel.metadata, 'Movie'));
 
     recordStreamStat(channel.provider_channel_id, 'Movie');
+
+    // Kota modu: ?direct=1 → baytlar upstream'den insin.
+    if (wantsDirectUpstream(req)) {
+        return res.redirect(302, remoteUrl);
+    }
 
     const shouldTranscode = req.query.transcode === 'true' || hasSelectedVodTracks(req);
 
@@ -253,6 +259,11 @@ export const proxySeries = async (req, res) => {
       'User-Agent': availableProvider.user_agent || DEFAULT_USER_AGENT,
       'Connection': 'keep-alive'
     };
+
+    // Kota modu: ?direct=1 → baytlar upstream'den insin.
+    if (wantsDirectUpstream(req)) {
+        return res.redirect(302, remoteUrl);
+    }
 
     const shouldTranscode = req.query.transcode === 'true' || hasSelectedVodTracks(req);
 

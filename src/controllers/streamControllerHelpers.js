@@ -343,6 +343,14 @@ export function parseMetadata(metadata, label) {
   }
 }
 
+// ?direct=1 (veya ?redirect=1): baytlar Render'dan geçmez, istemci
+// upstream'e 302 ile yönlenir. Oturum sayımı + istatistik ÖNCE yapılır,
+// kota sadece API/M3U metni yer.
+export function wantsDirectUpstream(req) {
+  const v = req && req.query ? (req.query.direct ?? req.query.redirect) : undefined;
+  return v === '1' || v === 'true' || v === 'yes';
+}
+
 export function buildStreamHeaders(userAgent, metadata, label) {
   const headers = {
     'User-Agent': userAgent || DEFAULT_USER_AGENT,
