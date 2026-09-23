@@ -106,7 +106,6 @@ export async function restoreLatestBackupFromGithub() {
   const branches = [cfg.branch];
   if (!branches.includes('main')) branches.push('main');
   let files = null;
-  let usedBranch = null;
   for (const branch of branches) {
     const listRes = await fetch(`${API}/repos/${cfg.repo}/contents/backups?ref=${branch}`, { headers });
     if (!listRes.ok) continue;
@@ -115,7 +114,6 @@ export async function restoreLatestBackupFromGithub() {
       .filter((f) => f && typeof f.name === 'string' && f.name.endsWith('.bin'));
     if (bins.length > 0) {
       files = bins;
-      usedBranch = branch;
       break;
     }
   }
