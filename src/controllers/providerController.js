@@ -2,7 +2,7 @@ import db from '../database/db.js';
 import { fetchSafe } from '../utils/network.js';
 import { encrypt, decrypt } from '../utils/crypto.js';
 import { isSafeUrl, redactUrl, providerSourceKey } from '../utils/helpers.js';
-import { performSync, checkProviderExpiry, deleteProviderChannelCascade } from '../services/syncService.js';
+import { performSync, checkProviderExpiry } from '../services/syncService.js';
 import { xtreamApiBase } from '../services/providerCatalogSyncService.js';
 import { updateProviderEpg } from '../services/epgService.js';
 import { clearChannelsCache } from '../services/cacheService.js';
@@ -508,12 +508,18 @@ export const deleteProvider = (req, res) => {
     const providerRow = db.prepare('SELECT url FROM providers WHERE id = ?').get(id);
 
     db.transaction(() => {
-      const providerChannels = db.prepare(
-        'SELECT id FROM provider_channels WHERE provider_id = ? ORDER BY id'
-      ).all(id);
-      for (const channel of providerChannels) {
-        deleteProviderChannelCascade(db, id, channel.id);
-      }
+      // Toplu silme: tek tek cascade yerine alt-sorgulu toplu DELETE.
+      // 25bin kanalda dakikalar süren kilitlenme yerine saniyeler.
+      db.prepare(`DELETE FROM epg_channel_mappings WHERE provider_channel_id IN (
+        SELECT id FROM provider_channels WHERE provider_id = ?
+      )`).run(id);
+      db.prepare(`DELETE FROM stream_stats WHERE channel_id IN (
+        SELECT id FROM provider_channels WHERE provider_id = ?
+      )`).run(id);
+      db.prepare(`DELETE FROM user_channels WHERE provider_channel_id IN (
+        SELECT id FROM provider_channels WHERE provider_id = ?
+      )`).run(id);
+      db.prepare('DELETE FROM provider_channels WHERE provider_id = ?').run(id);
 
       db.prepare('DELETE FROM sync_configs WHERE provider_id = ?').run(id);
       db.prepare('DELETE FROM sync_logs WHERE provider_id = ?').run(id);
