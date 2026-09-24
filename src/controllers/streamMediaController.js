@@ -24,7 +24,8 @@ import {
   sendSubtitleTrack,
   sendTrackInfo,
   shareGuestAllowed,
-  wantsDirectUpstream
+  parseMetadata,
+  wantsProxiedUpstream
 } from './streamControllerHelpers.js';
 
 export const proxyMovie = async (req, res) => {
@@ -79,9 +80,18 @@ export const proxyMovie = async (req, res) => {
 
     recordStreamStat(channel.provider_channel_id, 'Movie');
 
-    // Kota modu: ?direct=1 → baytlar upstream'den insin.
-    if (wantsDirectUpstream(req)) {
-        return res.redirect(302, remoteUrl);
+    // Kota varsayılanı: baytlar upstream'den insin, Render sadece 302 versin.
+    {
+        const isTokenAuthPath = req.path.includes('/token/auth/');
+        const forceProxy = wantsProxiedUpstream(req) || req.query.transcode === 'true' || hasSelectedVodTracks(req);
+        let customHeaders = false;
+        try {
+            const m = parseMetadata(channel.metadata, 'Movie');
+            customHeaders = !!(m && m.http_headers && Object.keys(m.http_headers).length > 0);
+        } catch {}
+        if (!isTokenAuthPath && !forceProxy && !customHeaders) {
+            return res.redirect(302, remoteUrl);
+        }
     }
 
     const shouldTranscode = req.query.transcode === 'true' || hasSelectedVodTracks(req);
@@ -260,9 +270,13 @@ export const proxySeries = async (req, res) => {
       'Connection': 'keep-alive'
     };
 
-    // Kota modu: ?direct=1 → baytlar upstream'den insin.
-    if (wantsDirectUpstream(req)) {
-        return res.redirect(302, remoteUrl);
+    // Kota varsayılanı: baytlar upstream'den insin, Render sadece 302 versin.
+    {
+        const isTokenAuthPath = req.path.includes('/token/auth/');
+        const forceProxy = wantsProxiedUpstream(req) || req.query.transcode === 'true' || hasSelectedVodTracks(req);
+        if (!isTokenAuthPath && !forceProxy) {
+            return res.redirect(302, remoteUrl);
+        }
     }
 
     const shouldTranscode = req.query.transcode === 'true' || hasSelectedVodTracks(req);

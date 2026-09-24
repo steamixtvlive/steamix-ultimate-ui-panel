@@ -504,14 +504,18 @@ when a public or upstream URL is generated. Known MIME types are mapped to
 their standard suffixes, and values containing path, query, fragment, percent,
 control, or playlist-injection characters fall back to a safe extension.
 
-### Kota modu (`?direct=1`)
+### Kota modu (varsayılan yöndir)
 
+- `GET /get.php` sade çağrılırsa panelin derlenmiş listesi üretilir.
 - `GET /get.php?...&direct=1` → liste üretilmez, istemci upstream `get.php`
   adresine 302 ile yönlendirilir (dosya baytları bu sunucuya uğramaz;
   panelin özel isim/filtre düzenlemesi uygulanmaz, ham upstream listesi gelir).
-- `/live/...`, `/movie/...`, `/series/...` isteklerinde `?direct=1`
-  (veya `?redirect=1`) → oturum sayımı ve istatistik yapıldıktan sonra
-  upstream adresine 302. Video baytları bu sunucudan geçmez (kota korunur).
+- `/live/...`, `/movie/...`, `/series/...` istekleri **varsayılan** olarak
+  upstream adresine 302 ile yönlendirilir: oturum sayımı ve istatistik
+  yapılır, video baytları bu sunucudan geçmez (kota korunur).
+  Yönlendirmeyi kapatıp baytları bu sunucudan akıtmak için `?proxy=1`
+  verilir. Token-auth linkleri, transcode/mp4 istekleri ve upstream'in
+  özel başlık istediği yayınlar her zaman proxy'lenir.
 
 M3U exports sanitize EPG identifiers as quoted attributes and keep DRM properties
 on a single line. Quotes inside DRM values are preserved for JSON-based license

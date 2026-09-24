@@ -24,7 +24,7 @@ import {
   recordStreamStat,
   reserveChannelSession,
   shareGuestAllowed,
-  wantsDirectUpstream
+  wantsProxiedUpstream
 } from './streamControllerHelpers.js';
 import { proxyMovie, proxySeries } from './streamMediaController.js';
 
@@ -200,9 +200,20 @@ export const proxyLive = async (req, res) => {
 
     const { headers: fetchHeaders } = buildStreamHeaders(channel.user_agent, channel.metadata, 'Live');
 
-    // Kota modu: ?direct=1 → baytlar upstream'den insin, Render sadece 302 versin.
-    if (wantsDirectUpstream(req)) {
-        return res.redirect(302, remoteUrl);
+    // Kota varsayılanı: baytlar upstream'den insin, Render sadece 302 versin.
+    // Proxy'ye düşen haller: token-auth linkleri, transcode/mp4, ?proxy=1,
+    // upstream'in özel başlık istemesi. Oturum sayımı yukarıda yapıldı.
+    {
+        const isTokenAuthPath = req.path.includes('/token/auth/');
+        const forceProxy = wantsProxiedUpstream(req) || wantsTranscode || reqExt === 'mp4';
+        let customHeaders = false;
+        try {
+            const m = parseMetadata(channel.metadata, 'Live');
+            customHeaders = !!(m && m.http_headers && Object.keys(m.http_headers).length > 0);
+        } catch {}
+        if (!isTokenAuthPath && !forceProxy && !customHeaders) {
+            return res.redirect(302, remoteUrl);
+        }
     }
 
     const shouldTranscode = (req.query.transcode === 'true') || (reqExt === 'mp4');

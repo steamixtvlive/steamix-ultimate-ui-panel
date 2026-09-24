@@ -115,8 +115,11 @@ export const getPlaylist = async (req, res) => {
     const livePrefix = useTokenAuth ? `${baseUrl}/live/token/auth/` : `${baseUrl}/live/${encUser}/${encPass}/`;
     const moviePrefix = useTokenAuth ? `${baseUrl}/movie/token/auth/` : `${baseUrl}/movie/${encUser}/${encPass}/`;
     const seriesPrefix = useTokenAuth ? `${baseUrl}/series/token/auth/` : `${baseUrl}/series/${encUser}/${encPass}/`;
-    // Kota modu: get.php?direct=1 verilirse yayin linkleri ?direct=1 tasir,
-    // oynatici bayraklari upstream'den indirir (Render kotasi korunur).
+    // Kota varsayilani yöndir (302): yayin linkleri sade cikar.
+    // ?proxy=1 verilirse linkler ?proxy=1 tasir ve baytlar Render uzerinden
+    // akar. ?direct=1 geriye uyumluluk icin aynen kabul edilir.
+    const wantProxy = req.query.proxy === '1';
+    const proxySuffix = wantProxy ? (useTokenAuth ? '&proxy=1' : '?proxy=1') : '';
     const wantDirect = req.query.direct === '1' || req.query.redirect === '1';
     const directSuffix = wantDirect ? (useTokenAuth ? '&direct=1' : '?direct=1') : '';
 
@@ -190,6 +193,9 @@ export const getPlaylist = async (req, res) => {
             if (directSuffix) {
               episodeUrl += directSuffix;
             }
+            if (proxySuffix) {
+              episodeUrl += proxySuffix;
+            }
 
             if (type === 'm3u_plus') {
               buffer += `#EXTINF:-1 tvg-id="" tvg-name="${sanitizeM3uName(epName)}" tvg-logo="${epLogo}" group-id="${groupId}" group-title="${safeGroup}",${epName}\n`;
@@ -220,6 +226,9 @@ export const getPlaylist = async (req, res) => {
       }
       if (directSuffix) {
         streamUrl += directSuffix;
+      }
+      if (proxySuffix) {
+        streamUrl += proxySuffix;
       }
 
       if (type === 'm3u_plus') {

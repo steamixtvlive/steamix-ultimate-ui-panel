@@ -351,6 +351,13 @@ export function wantsDirectUpstream(req) {
   return v === '1' || v === 'true' || v === 'yes';
 }
 
+// ?proxy=1: varsayılan yönlendirmeyi kapatıp baytları Render üzerinden akıtır
+// (transcode, özel başlıklı upstream, başlık gerektiren oynatıcılar için).
+export function wantsProxiedUpstream(req) {
+  const v = req && req.query ? req.query.proxy : undefined;
+  return v === '1' || v === 'true' || v === 'yes';
+}
+
 export function buildStreamHeaders(userAgent, metadata, label) {
   const headers = {
     'User-Agent': userAgent || DEFAULT_USER_AGENT,
