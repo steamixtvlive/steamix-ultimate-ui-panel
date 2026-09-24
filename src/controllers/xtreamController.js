@@ -4,6 +4,8 @@ import { getXtreamUser } from '../services/authService.js';
 import { getEpgXmlForChannels } from '../services/epgService.js';
 import { channelsJsonCache } from '../services/cacheService.js';
 import { getBaseUrl, providerSourceKey } from '../utils/helpers.js';
+import { decrypt } from '../utils/crypto.js';
+import { xtreamApiBase } from '../services/providerCatalogSyncService.js';
 import { normalizeContainerExtension } from '../utils/containerExtension.js';
 import { getEpgLogo, loadEpgLogosCache } from '../services/logoResolver.js';
 import {
@@ -33,6 +35,36 @@ export const getPlaylist = async (req, res) => {
     if (!user) return res.sendStatus(401);
     const shareScope = getShareScope(user);
     if (shareScope.isExpired) return res.sendStatus(403);
+
+    // Kota modu: get.php?direct=1 → listenin kendisi de upstream'den insin.
+    // Oynatıcı 302 yer, dosya baytları Render'a uğramaz. Oturum sayımı ve
+    // istatistik, listedeki ?direct=1'li yayın linkleri üzerinden yürür.
+    // (Not: bu modda panelin özel isim/filtre düzenlemesi uygulanmaz;
+    // ham upstream listesi gelir.)
+    if (req.query.direct === '1' || req.query.redirect === '1') {
+      try {
+        const prow = db.prepare(`
+          SELECT p.url, p.username, p.password
+          FROM providers p
+          JOIN provider_channels pc ON pc.provider_id = p.id
+          JOIN authorized_user_channels uc ON uc.provider_channel_id = pc.id
+          JOIN user_categories cat ON cat.id = uc.user_category_id
+          WHERE cat.user_id = ? AND uc.is_hidden = 0
+          ORDER BY p.id ASC LIMIT 1
+        `).get(user.id);
+        if (prow && prow.url) {
+          let upass = '';
+          try { upass = decrypt(prow.password) || ''; } catch { upass = ''; }
+          const t = (req.query.type || 'm3u').trim() || 'm3u';
+          const o = (req.query.output || 'ts').trim() || 'ts';
+          const upstreamList = `${xtreamApiBase(prow.url)}/get.php?username=${encodeURIComponent(prow.username || '')}&password=${encodeURIComponent(upass)}&type=${encodeURIComponent(t)}&output=${encodeURIComponent(o)}`;
+          return res.redirect(302, upstreamList);
+        }
+      } catch (e) {
+        console.error('get.php direct yönlendirme hatası:', e.message);
+      }
+      // Sağlayıcı yoksa normal akışa devam (curated liste).
+    }
 
     let query = `
       SELECT uc.id as user_channel_id, uc.custom_name, uc.user_category_id, pc.name, pc.logo, pc.epg_channel_id, pc.stream_type, pc.mime_type,
