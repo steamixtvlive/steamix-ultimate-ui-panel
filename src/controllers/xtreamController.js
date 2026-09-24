@@ -21,6 +21,29 @@ import {
   sanitizeM3uTag,
   wantsGzipResponse
 } from './xtreamControllerUtils.js';
+
+// Kullanıcının görünen kanallarının ilk sağlayıcısı (kota yönlendirmeleri için).
+// Yoksa null döner, çağrıcı normal akışa devam eder.
+function findFirstUpstreamProvider(userId) {
+  try {
+    const prow = db.prepare(`
+      SELECT p.url, p.username, p.password
+      FROM providers p
+      JOIN provider_channels pc ON pc.provider_id = p.id
+      JOIN authorized_user_channels uc ON uc.provider_channel_id = pc.id
+      JOIN user_categories cat ON cat.id = uc.user_category_id
+      WHERE cat.user_id = ? AND uc.is_hidden = 0
+      ORDER BY p.id ASC LIMIT 1
+    `).get(userId);
+    if (!prow || !prow.url) return null;
+    let upass = '';
+    try { upass = decrypt(prow.password) || ''; } catch { upass = ''; }
+    return { base: xtreamApiBase(prow.url), username: prow.username || '', password: upass };
+  } catch (e) {
+    console.error('Upstream sağlayıcı arama hatası:', e.message);
+    return null;
+  }
+}
 export * from './xtreamControllerUtils.js';
 export { playerApi } from './xtreamPlayerApiController.js';
 
@@ -38,30 +61,16 @@ export const getPlaylist = async (req, res) => {
 
     // Kota modu: get.php?direct=1 → listenin kendisi de upstream'den insin.
     // Oynatıcı 302 yer, dosya baytları Render'a uğramaz. Oturum sayımı ve
-    // istatistik, listedeki ?direct=1'li yayın linkleri üzerinden yürür.
+    // istatistik, listedeki yayın linkleri üzerinden yürür.
     // (Not: bu modda panelin özel isim/filtre düzenlemesi uygulanmaz;
     // ham upstream listesi gelir.)
     if (req.query.direct === '1' || req.query.redirect === '1') {
-      try {
-        const prow = db.prepare(`
-          SELECT p.url, p.username, p.password
-          FROM providers p
-          JOIN provider_channels pc ON pc.provider_id = p.id
-          JOIN authorized_user_channels uc ON uc.provider_channel_id = pc.id
-          JOIN user_categories cat ON cat.id = uc.user_category_id
-          WHERE cat.user_id = ? AND uc.is_hidden = 0
-          ORDER BY p.id ASC LIMIT 1
-        `).get(user.id);
-        if (prow && prow.url) {
-          let upass = '';
-          try { upass = decrypt(prow.password) || ''; } catch { upass = ''; }
-          const t = (req.query.type || 'm3u').trim() || 'm3u';
-          const o = (req.query.output || 'ts').trim() || 'ts';
-          const upstreamList = `${xtreamApiBase(prow.url)}/get.php?username=${encodeURIComponent(prow.username || '')}&password=${encodeURIComponent(upass)}&type=${encodeURIComponent(t)}&output=${encodeURIComponent(o)}`;
-          return res.redirect(302, upstreamList);
-        }
-      } catch (e) {
-        console.error('get.php direct yönlendirme hatası:', e.message);
+      const up = findFirstUpstreamProvider(user.id);
+      if (up) {
+        const t = (req.query.type || 'm3u').trim() || 'm3u';
+        const o = (req.query.output || 'ts').trim() || 'ts';
+        const upstreamList = `${up.base}/get.php?username=${encodeURIComponent(up.username)}&password=${encodeURIComponent(up.password)}&type=${encodeURIComponent(t)}&output=${encodeURIComponent(o)}`;
+        return res.redirect(302, upstreamList);
       }
       // Sağlayıcı yoksa normal akışa devam (curated liste).
     }
@@ -264,6 +273,16 @@ export const xmltv = async (req, res) => {
     if (!user) return res.sendStatus(401);
     const shareScope = getShareScope(user);
     if (shareScope.isExpired) return res.sendStatus(403);
+
+    // Kota modu: xmltv.php?direct=1 → rehber de upstream'den insin.
+    // (Not: panelin birleştirilmiş rehberi yerine ham upstream rehberi gelir.)
+    if (req.query.direct === '1' || req.query.redirect === '1') {
+      const up = findFirstUpstreamProvider(user.id);
+      if (up) {
+        return res.redirect(302, `${up.base}/xmltv.php?username=${encodeURIComponent(up.username)}&password=${encodeURIComponent(up.password)}`);
+      }
+      // Sağlayıcı yoksa normal akışa devam.
+    }
 
     // Get allowed EPG IDs for this user
     const allowedIds = new Set();

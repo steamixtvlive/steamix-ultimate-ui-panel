@@ -28,7 +28,7 @@ vi.mock('../src/services/authService.js', () => ({
 
 import db, { initDb } from '../src/database/db.js';
 import { encrypt } from '../src/utils/crypto.js';
-import { getPlaylist } from '../src/controllers/xtreamController.js';
+import { getPlaylist, xmltv } from '../src/controllers/xtreamController.js';
 
 function fakeReq(query) {
   return {
@@ -90,5 +90,13 @@ describe('get.php direct kota modu', () => {
     expect(out.redirected).toBeNull();
     expect(out.body.startsWith('#EXTM3U')).toBe(true);
     expect(out.body).not.toContain('direct=1');
+  });
+
+  it('xmltv.php?direct=1 rehberi upstream adresine yonlendirir', async () => {
+    const { out, res } = fakeRes();
+    await xmltv(fakeReq({ username: 't', password: 'x', direct: '1' }), res);
+    expect(out.redirected).toBeTruthy();
+    expect(out.redirected.code).toBe(302);
+    expect(out.redirected.url).toBe('http://ornek.test:8080/xmltv.php?username=u&password=p');
   });
 });
