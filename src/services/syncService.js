@@ -162,7 +162,9 @@ export async function performSync(providerId, userId, options = {}) {
 
     const provider = db.prepare('SELECT * FROM providers WHERE id = ?').get(providerId);
     if (!provider) throw new Error('Provider not found');
-    const crossOwner = Number(provider.user_id) !== Number(userId);
+    // Sahibsiz (user_id NULL) saglayici globaldir: cross-owner sayilmaz.
+    const crossOwner = provider.user_id !== null && provider.user_id !== undefined &&
+      Number(provider.user_id) !== Number(userId);
     const hasPersistedGrant = Number(config?.granted_by_admin) === 1;
     const hasManualGrant = isManual && options?.allowCrossOwner === true;
 

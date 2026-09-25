@@ -117,7 +117,7 @@ export const getMappings = (req, res) => {
     }
     if (!req.user.is_admin) {
       const provider = db.prepare('SELECT user_id FROM providers WHERE id = ?').get(id);
-      if (!provider || provider.user_id !== req.user.id) {
+      if (!provider || (provider.user_id !== null && provider.user_id !== req.user.id)) {
         return res.status(403).json({error: 'Access denied'});
       }
     }

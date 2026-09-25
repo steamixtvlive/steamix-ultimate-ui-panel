@@ -285,6 +285,12 @@ describe('resolveAssignmentGrant', () => {
     expect(resolveAssignmentGrant({ categoryOwnerId: 7, providerOwnerId: 8, isAdmin: true })).toBe(null);
     expect(resolveAssignmentGrant({ categoryOwnerId: 7, providerOwnerId: 8, isAdmin: true, allowExplicitAdminGrant: true })).toBe(1);
   });
+
+  it('treats ownerless (NULL) providers as global and grants without approval', () => {
+    expect(resolveAssignmentGrant({ categoryOwnerId: 7, providerOwnerId: null })).toBe(0);
+    expect(resolveAssignmentGrant({ categoryOwnerId: 7, providerOwnerId: null, isAdmin: false })).toBe(0);
+    expect(resolveAssignmentGrant({ categoryOwnerId: null, providerOwnerId: undefined })).toBe(0);
+  });
 });
 
 describe('getBaseUrl', () => {

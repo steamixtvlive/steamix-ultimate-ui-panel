@@ -106,7 +106,7 @@ function syncDiff(actor,userId,snapshotId) {
   const row=snapshotId?db.prepare('SELECT * FROM ai_sync_snapshots WHERE id=? AND user_id=?').get(snapshotId,userId):db.prepare('SELECT * FROM ai_sync_snapshots WHERE user_id=? ORDER BY created_at DESC LIMIT 1').get(userId);
   if(!row||row.created_at<Date.now()-RETENTION_MS) return null;
   targetUser(actor,userId);
-  const allowed=db.prepare(`SELECT 1 FROM providers p WHERE p.id=? AND (p.user_id=? OR EXISTS(
+  const allowed=db.prepare(`SELECT 1 FROM providers p WHERE p.id=? AND (p.user_id IS NULL OR p.user_id=? OR EXISTS(
     SELECT 1 FROM sync_configs s WHERE s.provider_id=p.id AND s.user_id=? AND s.enabled=1 AND s.granted_by_admin=1))`).get(row.provider_id,userId,userId);
   if(!allowed) fail('AI_SOURCE_UNAVAILABLE',409);
   const data=JSON.parse(row.data_json);

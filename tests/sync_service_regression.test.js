@@ -177,6 +177,21 @@ describe('sync authorization regression', () => {
     expect(log.details).not.toContain('super-secret');
   });
 
+  it('syncs an ownerless global provider without approval', async () => {
+    configure({ providerOwner: null });
+
+    const result = await performSync(1, 1, { mode: 'scheduled' });
+
+    expect(result.errorMessage).toBe(null);
+    expect(result.channelsAdded).toBe(1);
+    expect(memDb.prepare('SELECT granted_by_admin, authorization_revoked FROM user_channels').get()).toEqual({
+      granted_by_admin: 0,
+      authorization_revoked: 0,
+    });
+    expect(memDb.prepare("SELECT COUNT(*) AS count FROM security_logs WHERE action = 'cross_owner_sync_blocked'").get().count).toBe(0);
+    expect(memDb.prepare('SELECT enabled FROM sync_configs WHERE id = 7').get()).toEqual({ enabled: 1 });
+  });
+
   it('uses the persisted admin grant for a cross-owner scheduled sync', async () => {
     configure({ providerOwner: 2, grant: 1 });
 

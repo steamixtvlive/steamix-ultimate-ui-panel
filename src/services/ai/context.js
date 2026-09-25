@@ -54,7 +54,7 @@ const channelSelect = `SELECT pc.id AS provider_channel_id, pc.provider_id, pc.n
 export function channelRecord(actor, userId, channelId, { editing = false, assignmentId = null, allowHidden = false } = {}) {
   targetUser(actor, userId);
   const condition = editing
-    ? '(p.user_id=@userId OR uc.granted_by_admin=1)'
+    ? '(p.user_id IS NULL OR p.user_id=@userId OR uc.granted_by_admin=1)'
     : 'uc.id IN (SELECT id FROM authorized_user_channels) AND uc.is_hidden=0';
   const rows = db.prepare(`${channelSelect} WHERE pc.id=@channelId AND ${condition}
     AND (@assignmentId IS NULL OR uc.id=@assignmentId)
@@ -101,13 +101,13 @@ export function buildContext(actor, payload) {
   if (!Number.isSafeInteger(offset) || offset < 0 || offset > 1000000) fail('AI_INVALID_OFFSET');
   const params = {userId};
   const clauses = [editing
-    ? `(uc.id IN (SELECT id FROM authorized_user_channels) OR (p.user_id=@userId AND uc.id IS NULL))`
+    ? `(uc.id IN (SELECT id FROM authorized_user_channels) OR ((p.user_id IS NULL OR p.user_id=@userId) AND uc.id IS NULL))`
     : 'uc.id IN (SELECT id FROM authorized_user_channels)'];
   if (selectedDiagnosis) {
-    clauses[0] = '(p.user_id=@userId OR uc.granted_by_admin=1) AND COALESCE(uc.authorization_revoked,0)=0';
+    clauses[0] = '(p.user_id IS NULL OR p.user_id=@userId OR uc.granted_by_admin=1) AND COALESCE(uc.authorization_revoked,0)=0';
     if(selectedIds.length) clauses.push(`uc.id IN (${selectedIds.map((id,i)=>{params['selected'+i]=id;return '@selected'+i;}).join(',')})`);
   } else if (selectedIds.length && editing) {
-    clauses[0] = `(${clauses[0]} OR (uc.id IN (${selectedIds.map((id,i)=> {params['selected'+i]=id;return '@selected'+i;}).join(',')}) AND uc.authorization_revoked=0 AND (p.user_id=@userId OR uc.granted_by_admin=1)))`;
+    clauses[0] = `(${clauses[0]} OR (uc.id IN (${selectedIds.map((id,i)=> {params['selected'+i]=id;return '@selected'+i;}).join(',')}) AND uc.authorization_revoked=0 AND (p.user_id IS NULL OR p.user_id=@userId OR uc.granted_by_admin=1)))`;
   }
   if (channelIds.length) clauses.push(`pc.id IN (${channelIds.map((id,i)=>{params['id'+i]=id;return '@id'+i;}).join(',')})`);
   if (payload.category_id) { params.categoryId=positiveId(payload.category_id); clauses.push('uc.user_category_id=@categoryId'); }
@@ -129,12 +129,12 @@ export function buildContext(actor, payload) {
 export function iterateEditableChannels(actor,userId) {
   targetUser(actor,userId);
   return db.prepare(`${channelSelect} WHERE uc.id IN (SELECT id FROM authorized_user_channels)
-    OR (p.user_id=@userId AND uc.id IS NULL) ORDER BY pc.id,uc.id`).iterate({userId});
+    OR ((p.user_id IS NULL OR p.user_id=@userId) AND uc.id IS NULL) ORDER BY pc.id,uc.id`).iterate({userId});
 }
 
 export function epgSources(actor, userId) {
   targetUser(actor,userId);
-  const providers = db.prepare(`SELECT id FROM providers WHERE user_id=? OR id IN (
+  const providers = db.prepare(`SELECT id FROM providers WHERE user_id IS NULL OR user_id=? OR id IN (
     SELECT pc.provider_id FROM authorized_user_channels uc JOIN user_categories cat ON cat.id=uc.user_category_id
     JOIN provider_channels pc ON pc.id=uc.provider_channel_id WHERE cat.user_id=?)`).all(userId,userId).map(row=>row.id);
   const custom = db.prepare('SELECT id FROM epg_sources WHERE enabled=1').all().map(row=>row.id);

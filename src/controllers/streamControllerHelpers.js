@@ -159,7 +159,7 @@ export function getProviderPool(userId, providerUrl) {
     const base = providerUrl.replace(/\/+$/, '');
     // ⚡ Bolt: Cache prepared statement to eliminate SQLite compilation overhead on hot paths
     if (!stmts.getProviderPool) {
-        stmts.getProviderPool = db.prepare('SELECT * FROM providers WHERE user_id = ? AND url LIKE ?');
+        stmts.getProviderPool = db.prepare('SELECT * FROM providers WHERE (user_id = ? OR user_id IS NULL) AND url LIKE ?');
     }
     // Fetch all providers for the same user with the same base url
     const providers = stmts.getProviderPool.all(userId, `${base}%`);

@@ -409,6 +409,10 @@ remain disabled, and scheduled syncs never infer approval from an owner
 mismatch. Same-owner configs are always normalized to
 `granted_by_admin = 0`.
 
+Providers without an owner (`user_id IS NULL`) are treated as global/shared:
+they are visible and syncable by every account, never counted as cross-owner,
+and never require `allow_cross_owner`.
+
 Manual cross-owner provider syncs likewise require `allow_cross_owner: true`.
 Adding `restore_revoked_assignments: true` clears only
 `authorization_revoked` on assignments covered by that approved sync and sets

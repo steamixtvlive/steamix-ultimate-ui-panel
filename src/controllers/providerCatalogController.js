@@ -11,7 +11,7 @@ export const getProviderChannels = (req, res) => {
 
     if (!req.user.is_admin) {
         const provider = db.prepare('SELECT user_id FROM providers WHERE id = ?').get(providerId);
-        if (!provider || provider.user_id !== req.user.id) return res.status(403).json({error: 'Access denied'});
+        if (!provider || (provider.user_id !== null && provider.user_id !== req.user.id)) return res.status(403).json({error: 'Access denied'});
     }
 
     const canViewChannelMetadata = req.user.is_admin || Number(req.user.provider_access) === 1;
@@ -75,7 +75,7 @@ export const getProviderCategories = async (req, res) => {
     const provider = db.prepare('SELECT * FROM providers WHERE id = ?').get(id);
     if (!provider) return res.status(404).json({error: 'Provider not found'});
 
-    if (!req.user.is_admin && provider.user_id !== req.user.id) {
+    if (!req.user.is_admin && provider.user_id !== null && provider.user_id !== req.user.id) {
         return res.status(403).json({error: 'Access denied'});
     }
 

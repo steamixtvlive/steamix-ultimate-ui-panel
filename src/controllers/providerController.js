@@ -65,7 +65,7 @@ export const getProviders = (req, res) => {
     const params = [];
 
     if (user_id) {
-      query += ' WHERE p.user_id = ?';
+      query += ' WHERE (p.user_id IS NULL OR p.user_id = ?)';
       params.push(Number(user_id));
     }
 

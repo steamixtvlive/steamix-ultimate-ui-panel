@@ -246,8 +246,10 @@ export function resolveAssignmentGrant({
   isAdmin = false,
   allowExplicitAdminGrant = false
 }) {
+  // Sahibsiz (NULL) saglayici globaldir: hicbir onay/Grant gerekmez.
+  if (providerOwnerId === null || providerOwnerId === undefined) return 0;
+
   if (categoryOwnerId !== null && categoryOwnerId !== undefined &&
-      providerOwnerId !== null && providerOwnerId !== undefined &&
       Number(categoryOwnerId) === Number(providerOwnerId)) return 0;
 
   return isAdmin && allowExplicitAdminGrant ? 1 : null;

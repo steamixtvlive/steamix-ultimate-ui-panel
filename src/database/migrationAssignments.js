@@ -163,7 +163,7 @@ export function migrateUserChannelDeduplicationV1(db) {
 export function migrateUserChannelAdminGrants(db) {
   const migrate = db.transaction(() => {
     const columns = db.prepare('PRAGMA table_info(user_channels)').all().map(column => column.name);
-    const markerKey = 'user_channel_authorization_v1';
+    const markerKey = 'user_channel_authorization_v2';
     const completed = db.prepare('SELECT value FROM settings WHERE key = ?').get(markerKey);
     const authorizationView = db.prepare(`
       SELECT name FROM sqlite_master
@@ -208,6 +208,13 @@ export function migrateUserChannelAdminGrants(db) {
       SET authorization_revoked = 1
       WHERE authorization_revoked = 0
         AND granted_by_admin = 0
+        AND EXISTS (
+          SELECT 1
+          FROM provider_channels pc
+          JOIN providers p ON p.id = pc.provider_id
+          WHERE pc.id = user_channels.provider_channel_id
+            AND p.user_id IS NOT NULL
+        )
         AND NOT EXISTS (
           SELECT 1
           FROM user_categories cat
@@ -217,6 +224,22 @@ export function migrateUserChannelAdminGrants(db) {
             AND p.user_id = cat.user_id
         )
     `).run().changes;
+
+    // Sahibsiz (user_id NULL) saglayicilar globaldir: daha once bu yuzden
+    // iptal edilmis atamalari geri ac.
+    db.prepare(`
+      UPDATE user_channels
+      SET authorization_revoked = 0
+      WHERE authorization_revoked = 1
+        AND EXISTS (
+          SELECT 1
+          FROM user_categories cat
+          JOIN provider_channels pc ON pc.id = user_channels.provider_channel_id
+          JOIN providers p ON p.id = pc.provider_id
+          WHERE cat.id = user_channels.user_category_id
+            AND p.user_id IS NULL
+        )
+    `).run();
 
     db.exec(`
       DROP VIEW IF EXISTS authorized_user_channels;
@@ -228,7 +251,7 @@ export function migrateUserChannelAdminGrants(db) {
       JOIN providers p ON p.id = pc.provider_id
       WHERE uc.is_hidden = 0
         AND uc.authorization_revoked = 0
-        AND (p.user_id = cat.user_id OR uc.granted_by_admin = 1)
+        AND (p.user_id IS NULL OR p.user_id = cat.user_id OR uc.granted_by_admin = 1)
     `);
 
     db.prepare(`
@@ -263,7 +286,7 @@ export function migrateSyncConfigAdminGrants(db) {
           SELECT 1
           FROM providers p
           WHERE p.id = sync_configs.provider_id
-            AND p.user_id IS sync_configs.user_id
+            AND (p.user_id IS NULL OR p.user_id IS sync_configs.user_id)
         )
     `).run().changes;
   });

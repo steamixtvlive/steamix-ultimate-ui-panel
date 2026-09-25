@@ -308,7 +308,7 @@ describe('Migration Bug Regression', () => {
             ]);
             expect(legacyDb.prepare('SELECT id FROM authorized_user_channels ORDER BY id').all()).toEqual([{ id: 40 }]);
 
-            expect(legacyDb.prepare("SELECT value FROM settings WHERE key = 'user_channel_authorization_v1'").get())
+            expect(legacyDb.prepare("SELECT value FROM settings WHERE key = 'user_channel_authorization_v2'").get())
               .toEqual({ value: 'true' });
             legacyDb.exec(`
               CREATE TRIGGER reject_repeated_authorization_backfill
