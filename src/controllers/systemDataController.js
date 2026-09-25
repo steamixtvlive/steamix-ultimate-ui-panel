@@ -63,7 +63,8 @@ export const exportData = (req, res) => {
        // ⚡ Bolt: Use Array(n).fill('?').join(',') instead of .map(() => '?') to avoid closure allocation overhead in V8
        const userPlaceholders = Array(userIds.length).fill('?').join(',');
 
-       const providers = db.prepare(`SELECT * FROM providers WHERE user_id IN (${userPlaceholders})`).all(...userIds);
+       // Sahibsiz (user_id NULL) saglayicilar globaldir: disa aktarima dahil edilir.
+       const providers = db.prepare(`SELECT * FROM providers WHERE user_id IS NULL OR user_id IN (${userPlaceholders})`).all(...userIds);
 
        const providerIds = [];
        for (const p of providers) {
@@ -351,8 +352,10 @@ export const importData = async (req, res) => {
       `);
 
       for (const p of importData.providers || []) {
-        const newUserId = userIdMap.get(p.user_id);
-        if (!newUserId) continue;
+        // Sahibsiz saglayici: user_id NULL olarak geri yuklenir (global).
+        const isOwnerless = p.user_id === null || p.user_id === undefined;
+        const newUserId = isOwnerless ? null : userIdMap.get(p.user_id);
+        if (!isOwnerless && !newUserId) continue;
 
         const newPassword = encrypt(p.password);
 
@@ -373,7 +376,7 @@ export const importData = async (req, res) => {
         );
 
         providerIdMap.set(p.id, info.lastInsertRowid);
-        providerOwnerMap.set(info.lastInsertRowid, newUserId);
+        if (newUserId) providerOwnerMap.set(info.lastInsertRowid, newUserId);
         stats.providers++;
       }
 
