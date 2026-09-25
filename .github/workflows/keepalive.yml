@@ -12,7 +12,7 @@ jobs:
       - name: Render'a istek at (uyanık tut)
         run: |
           for i in 1 2 3; do
-            code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 60 "https://xtreamcodes.onrender.com/")
+            code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 60 "https://xtreamcodes-rvn1.onrender.com/")
             echo "ping $i -> HTTP $code"
             if [ "$code" = "200" ] || [ "$code" = "302" ] || [ "$code" = "403" ]; then
               echo "OK - panel ayakta"
