@@ -262,6 +262,46 @@ export const addUserChannel = (req, res) => {
   } catch (e) { res.status(e.status || 500).json({error: e.message}); }
 };
 
+// Listedeki filtrenin tamamını (sayfa sayfa değil, hepsini) hedef kategoriye
+// tek seferde atar. Tek tek + düğmesi aynen durur; bu otomatik toplu yoldur.
+export const bulkAddChannels = (req, res) => {
+  try {
+    const catId = Number(req.params.catId);
+    const cat = db.prepare('SELECT user_id FROM user_categories WHERE id = ?').get(catId);
+    if (!cat) return res.status(404).json({error: 'Category not found'});
+    if (!req.user.is_admin && cat.user_id !== req.user.id) {
+        return res.status(403).json({error: 'Access denied'});
+    }
+    const providerId = Number(req.body.provider_id);
+    if (!providerId) return res.status(400).json({error: 'provider_id required'});
+    const type = typeof req.body.type === 'string' && req.body.type ? req.body.type : null;
+    const term = typeof req.body.search === 'string' ? req.body.search.trim().toLowerCase() : '';
+
+    let q = 'SELECT id FROM provider_channels WHERE provider_id = ?';
+    const params = [providerId];
+    if (type) { q += ' AND stream_type = ?'; params.push(type); }
+    if (term) { q += ' AND lower(name) LIKE ?'; params.push(`%${term}%`); }
+    q += ' ORDER BY original_sort_order ASC, name ASC, id ASC';
+    const rows = db.prepare(q).all(...params);
+
+    let added = 0;
+    let existing = 0;
+    db.transaction(() => {
+      for (const r of rows) {
+        const before = db.prepare(
+          'SELECT id FROM user_channels WHERE user_category_id = ? AND provider_channel_id = ?'
+        ).get(catId, r.id);
+        addChannel(db, req.user, catId, r.id);
+        if (before) existing++;
+        else added++;
+      }
+    })();
+
+    clearChannelsCache(cat.user_id);
+    res.json({success: true, added, existing, total: rows.length});
+  } catch (e) { res.status(e.status || 500).json({error: e.message}); }
+};
+
 export const reorderUserChannels = (req, res) => {
   try {
     const catId = parsePositiveSafeInteger(req.params.catId);

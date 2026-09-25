@@ -2594,6 +2594,38 @@ document.getElementById('user-channel-search').addEventListener('input', debounc
   renderUserCategoryChannels();
 }, 200));
 
+// Tümünü Aktar: listedeki filtrenin tamamını (sayfa değil, hepsini)
+// seçili kullanıcı+kategoriye tek seferde atar. Tek tek + düğmesi durur.
+document.getElementById('btn-assign-all-channels').addEventListener('click', async () => {
+  if (!selectedUserId || !selectedCategoryId) {
+    alert(t('selectUserAndCategory'));
+    return;
+  }
+  const select = document.getElementById('channel-provider-select');
+  const providerId = select ? select.value : '';
+  if (!providerId) {
+    alert(t('pleaseSelectProvider'));
+    return;
+  }
+  const typeRadio = document.querySelector('.channel-type-filter:checked');
+  const type = typeRadio ? typeRadio.value : 'live';
+  const searchInput = document.getElementById('provider-channel-search');
+  const search = searchInput ? searchInput.value.trim() : '';
+  const count = (typeof channelTotal === 'number' && channelTotal > 0) ? channelTotal : '?';
+  if (!confirm(t('assignAllConfirm', {count}))) return;
+  try {
+    const res = await fetchJSON(`/api/user-categories/${selectedCategoryId}/channels/bulk`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({provider_id: Number(providerId), type, search})
+    });
+    alert(t('assignAllDone', {added: res.added, total: res.total}));
+    loadUserCategoryChannels();
+  } catch (e) {
+    alert(t('errorPrefix') + ' ' + e.message);
+  }
+});
+
 // === Sync Configuration Management ===
 let currentSyncConfig = null;
 
