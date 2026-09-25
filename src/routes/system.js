@@ -3,8 +3,26 @@ import * as systemController from '../controllers/systemController.js';
 import { authenticateToken } from '../middleware/auth.js';
 import { upload } from '../middleware/upload.js';
 import { clientLogLimiter } from '../middleware/security.js';
+import { runPushBackup, getLastPushInfo, githubBackupConfig } from '../services/githubBackupService.js';
 
 const router = express.Router();
+
+// Program-içi GitHub yedek: manuel tetikleme + durum (Render log'larina erisim yok).
+router.get('/backup/github/status', authenticateToken, (req, res) => {
+  if (!req.user.is_admin) return res.status(403).json({error: 'Access denied'});
+  const cfg = githubBackupConfig();
+  res.json({
+    enabled: Boolean(cfg.token && cfg.password),
+    repo: cfg.repo,
+    branch: cfg.branch,
+    interval_min: cfg.intervalMin,
+    last_push: getLastPushInfo()
+  });
+});
+router.post('/backup/github/push', authenticateToken, async (req, res) => {
+  if (!req.user.is_admin) return res.status(403).json({error: 'Access denied'});
+  res.json(await runPushBackup());
+});
 
 router.get('/settings', authenticateToken, systemController.getSettings);
 router.post('/settings', authenticateToken, systemController.updateSettings);

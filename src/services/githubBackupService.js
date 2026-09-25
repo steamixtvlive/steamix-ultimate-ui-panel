@@ -71,10 +71,10 @@ function exportToBuffer(password) {
 
 export async function pushBackupToGithub() {
   const cfg = githubBackupConfig();
-  if (!cfg.token || !cfg.password) return { skipped: true, reason: 'GITHUB_BACKUP_TOKEN / şifre yok' };
+  if (!cfg.token || !cfg.password) return recordPush(false, 'GITHUB_BACKUP_TOKEN / şifre yok');
   // Bos DB asla yedeklenmez: zaman damgasi en yeni oldugu icin sonraki
   // acilislarda geri yukleme bos dosyayi secer ve gercek veri kaybolur.
-  if (databaseIsEmpty()) return { skipped: true, reason: 'DB bos - yedek yazilmadi' };
+  if (databaseIsEmpty()) return recordPush(false, 'DB bos - yedek yazilmadi');
   await ensureBranch(cfg);
   const buffer = exportToBuffer(cfg.password);
   const name = backupFileName();
@@ -93,7 +93,18 @@ export async function pushBackupToGithub() {
   });
   if (!putRes.ok) throw new Error(`Yedek yazılamadı (HTTP ${putRes.status})`);
   console.info(`✅ GitHub yedeği yazıldı: ${name} (${buffer.length} bytes)`);
+  recordPush(true, `${name} (${buffer.length} bytes)`);
   return { success: true, name, bytes: buffer.length };
+}
+
+// Zamanlayici ve manuel tetikleme hatalarini kaydeder (panelde gorunur).
+export async function runPushBackup() {
+  try {
+    return await pushBackupToGithub();
+  } catch (e) {
+    recordPush(false, e.message);
+    return { success: false, error: e.message };
+  }
 }
 
 async function downloadBackupFile(url, token) {
@@ -146,6 +157,16 @@ export async function restoreLatestBackupFromGithub() {
 
 let backupTimer = null;
 let firstPushTimer = null;
+let lastPush = null; // { at, ok, detail } — panelden tetiklenen/otomatik push sonucu
+
+export function getLastPushInfo() {
+  return lastPush;
+}
+
+function recordPush(ok, detail) {
+  lastPush = { at: new Date().toISOString(), ok, detail };
+  return lastPush;
+}
 
 export function startGithubBackupScheduler() {
   if (backupTimer) clearInterval(backupTimer);
@@ -159,10 +180,10 @@ export function startGithubBackupScheduler() {
   // Ilk yedek 60 sn icinde: Render deploy'lari sunucuyu yeniden baslattigi
   // icin aralikli zamanlayici hic tetiklenmeden veri kaybolmasin.
   firstPushTimer = setTimeout(() => {
-    pushBackupToGithub().catch((e) => console.error('İlk otomatik yedek hatası:', e.message));
+    runPushBackup().then((r) => { if (r && r.success === false) console.error('İlk otomatik yedek hatası:', r.error); });
   }, 60 * 1000);
   backupTimer = setInterval(() => {
-    pushBackupToGithub().catch((e) => console.error('Otomatik yedek hatası:', e.message));
+    runPushBackup().then((r) => { if (r && r.success === false) console.error('Otomatik yedek hatası:', r.error); });
   }, cfg.intervalMin * 60 * 1000);
   return true;
 }

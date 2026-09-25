@@ -387,6 +387,13 @@ JWT.
 - `DELETE /api/security/whitelist/:id`
 - `POST /api/export`
 - `POST /api/import`
+- `GET /api/backup/github/status`
+- `POST /api/backup/github/push`
+
+Program-içi GitHub yedek (admin JWT): `status` env/ayarları ve son push
+sonucunu döner; `push` yedeği hemen dener ve `{ success }` ya da
+`{ success: false, error }` yanıtlar. Boş veritabanı asla yedeklenmez
+(geri yükleme en yeni dosyayı seçtiği için boş yedek veri kaybına yol açar).
 - `GET /api/sync-configs`
 - `GET /api/sync-configs/:providerId/:userId`
 - `POST /api/sync-configs`
