@@ -72,6 +72,9 @@ function exportToBuffer(password) {
 export async function pushBackupToGithub() {
   const cfg = githubBackupConfig();
   if (!cfg.token || !cfg.password) return { skipped: true, reason: 'GITHUB_BACKUP_TOKEN / şifre yok' };
+  // Bos DB asla yedeklenmez: zaman damgasi en yeni oldugu icin sonraki
+  // acilislarda geri yukleme bos dosyayi secer ve gercek veri kaybolur.
+  if (databaseIsEmpty()) return { skipped: true, reason: 'DB bos - yedek yazilmadi' };
   await ensureBranch(cfg);
   const buffer = exportToBuffer(cfg.password);
   const name = backupFileName();
@@ -142,15 +145,22 @@ export async function restoreLatestBackupFromGithub() {
 }
 
 let backupTimer = null;
+let firstPushTimer = null;
 
 export function startGithubBackupScheduler() {
   if (backupTimer) clearInterval(backupTimer);
+  if (firstPushTimer) clearTimeout(firstPushTimer);
   const cfg = githubBackupConfig();
   if (!cfg.token || !cfg.password) {
     console.info('ℹ️ Program-içi GitHub yedek kapalı (GITHUB_BACKUP_TOKEN / şifre yok)');
     return false;
   }
   console.info(`💾 Program-içi GitHub yedek açık: her ${cfg.intervalMin} dk → ${cfg.repo}@${cfg.branch}`);
+  // Ilk yedek 60 sn icinde: Render deploy'lari sunucuyu yeniden baslattigi
+  // icin aralikli zamanlayici hic tetiklenmeden veri kaybolmasin.
+  firstPushTimer = setTimeout(() => {
+    pushBackupToGithub().catch((e) => console.error('İlk otomatik yedek hatası:', e.message));
+  }, 60 * 1000);
   backupTimer = setInterval(() => {
     pushBackupToGithub().catch((e) => console.error('Otomatik yedek hatası:', e.message));
   }, cfg.intervalMin * 60 * 1000);
@@ -159,7 +169,9 @@ export function startGithubBackupScheduler() {
 
 export function stopGithubBackupScheduler() {
   if (backupTimer) clearInterval(backupTimer);
+  if (firstPushTimer) clearTimeout(firstPushTimer);
   backupTimer = null;
+  firstPushTimer = null;
 }
 
 export function databaseIsEmpty() {
