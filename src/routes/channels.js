@@ -15,7 +15,6 @@ router.put('/user-categories/:id/adult', authenticateToken, channelController.up
 
 router.get('/user-categories/:catId/channels', authenticateToken, channelController.getCategoryChannels);
 router.post('/user-categories/:catId/channels', authenticateToken, channelController.addUserChannel);
-router.post('/user-categories/:catId/channels/bulk', authenticateToken, channelController.bulkAddChannels);
 router.put('/user-categories/:catId/channels/reorder', authenticateToken, channelController.reorderUserChannels);
 
 router.delete('/user-channels/:id', authenticateToken, channelController.deleteUserChannel);
