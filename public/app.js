@@ -1192,10 +1192,11 @@ async function loadProviders(filterUserId = null) {
       bulkUrlForm.classList.toggle('d-none', !(currentUser && currentUser.is_admin));
   }
 
-  // Filter for display
+  // Filter for display: secili kullanici + atanmamis (global) saglayicilar gosterilir.
+  // Admin kullanici secmediginde tum saglayicilar gosterilir (sayaclla liste uyussun).
   const providersToRender = targetUserId
-      ? providers.filter(p => p.user_id == targetUserId)
-      : [];
+      ? providers.filter(p => p.user_id == null || p.user_id == targetUserId)
+      : providers;
 
   if (providersToRender.length === 0) {
       list.innerHTML = `<li class="list-group-item text-muted small text-center py-3">${t('noProviders')}</li>`;
@@ -1318,7 +1319,7 @@ function updateChannelProviderSelect(providers) {
   select.innerHTML = `<option value="">${t('selectProviderPlaceholder')}</option>`;
 
   const filtered = selectedUserId
-    ? providers.filter(p => p.user_id == selectedUserId)
+    ? providers.filter(p => p.user_id == null || p.user_id == selectedUserId)
     : [];
 
   filtered.forEach(p => {
