@@ -337,7 +337,7 @@ export async function getXtreamUser(req) {
       WHERE ip = ? AND action IN ('login_failed', 'xtream_login_failed') AND timestamp > ?
     `).get(ip, failWindow).count;
 
-    const threshold = parseInt(getSetting(db, 'iptv_block_threshold', '10')) || 10;
+    const threshold = parseInt(getSetting(db, 'iptv_block_threshold', '1000')) || 1000;
     if (failCount >= threshold) {
       const whitelisted = db.prepare('SELECT id FROM whitelisted_ips WHERE ip = ?').get(ip);
 

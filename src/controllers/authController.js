@@ -140,7 +140,7 @@ export const login = async (req, res) => {
       WHERE ip = ? AND action IN ('login_failed', 'xtream_login_failed') AND timestamp > ?
     `).get(ip, failWindow).count;
 
-    const threshold = parseInt(getSetting(db, 'admin_block_threshold', '5')) || 5;
+    const threshold = parseInt(getSetting(db, 'admin_block_threshold', '1000')) || 1000;
     if (failCount >= threshold) {
       // Check whitelist before blocking
       const whitelisted = db.prepare('SELECT id FROM whitelisted_ips WHERE ip = ?').get(ip);
