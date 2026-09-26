@@ -61,8 +61,9 @@ export const getPlaylist = async (req, res) => {
     if (shareScope.isExpired) return res.sendStatus(403);
 
     // Kisi basi koruma: 10sn'de liste soran oynaticilar (or. Televizio) kotayi
-    // delmesin. Saatte 10 indirme; kurulum + tekrarlar rahat sigar, dongu 429 yer.
-    if (!user.is_admin && !checkUserEndpointLimit(user.id, 'playlist', 10, 3600)) {
+    // delmesin. Normal kullanici saatte 10, misafir saatte 2 indirme;
+    // kurulum + tekrarlar rahat sigar, dongu 429 yer.
+    if (!user.is_admin && !checkUserEndpointLimit(user.id, 'playlist', shareScope.isShareGuest ? 2 : 10, 3600)) {
       return userEndpointLimitExceeded(res);
     }
 
@@ -285,8 +286,8 @@ export const xmltv = async (req, res) => {
     const shareScope = getShareScope(user);
     if (shareScope.isExpired) return res.sendStatus(403);
 
-    // Kisi basi koruma: panel rehberi uretimi MB'lar tutar; saatte 10 indirme.
-    if (!user.is_admin && !checkUserEndpointLimit(user.id, 'xmltv', 10, 3600)) {
+    // Kisi basi koruma: panel rehberi uretimi MB'lar tutar.
+    if (!user.is_admin && !checkUserEndpointLimit(user.id, 'xmltv', shareScope.isShareGuest ? 2 : 10, 3600)) {
       return userEndpointLimitExceeded(res);
     }
 
