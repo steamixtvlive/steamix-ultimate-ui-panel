@@ -64,9 +64,9 @@ export const getPlaylist = async (req, res) => {
     if (!shareScope.isShareGuest && !wantsDirectUpstream(req)) return res.sendStatus(403);
 
     // Kisi basi koruma: 10sn'de liste soran oynaticilar (or. Televizio) kotayi
-    // delmesin. REDDEDILEN istekler hak yemez. Normal kullanici gunde 3,
-    // misafir gunde 1 indirme; kurulum rahat sigar, dongu 429 yer.
-    if (!user.is_admin && !checkUserEndpointLimit(user.id, 'playlist', shareScope.isShareGuest ? 1 : 3, 86400)) {
+    // delmesin. REDDEDILEN istekler hak yemez. direct=1 sadece 302 dondurur
+    // (bayt sayilmaz) o yuzden bol; MB tasiyan misafir listesi gunde 2.
+    if (!user.is_admin && !checkUserEndpointLimit(user.id, 'playlist', shareScope.isShareGuest ? 2 : 100, 86400)) {
       return userEndpointLimitExceeded(res);
     }
 
@@ -286,9 +286,14 @@ export const xmltv = async (req, res) => {
     const shareScope = getShareScope(user);
     if (shareScope.isExpired) return res.sendStatus(403);
 
-    // Kisi basi koruma: panel rehberi uretimi MB'lar tutar. Gunde 3 (misafir 1).
-    if (!user.is_admin && !checkUserEndpointLimit(user.id, 'xmltv', shareScope.isShareGuest ? 1 : 3, 86400)) {
-      return userEndpointLimitExceeded(res);
+    // Kisi basi koruma: panel rehberi MB'lar tutar (gunde 10), upstream 302
+    // bayt sayilmaz (gunde 100). Misafir panel rehberi gunde 2.
+    if (!user.is_admin) {
+      const xmltvKey = shareScope.isShareGuest ? 'xmltv-guest' : (wantsDirectUpstream(req) ? 'xmltv-direct' : 'xmltv-panel');
+      const xmltvMax = shareScope.isShareGuest ? 2 : (wantsDirectUpstream(req) ? 100 : 10);
+      if (!checkUserEndpointLimit(user.id, xmltvKey, xmltvMax, 86400)) {
+        return userEndpointLimitExceeded(res);
+      }
     }
 
     // Kota modu: xmltv.php?direct=1 → rehber de upstream'den insin.
