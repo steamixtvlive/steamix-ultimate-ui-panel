@@ -21,7 +21,7 @@ import {
   sanitizeM3uTag,
   wantsGzipResponse
 } from './xtreamControllerUtils.js';
-import { wantsDirectUpstream } from './streamControllerHelpers.js';
+import { checkUserEndpointLimit, userEndpointLimitExceeded, wantsDirectUpstream } from './streamControllerHelpers.js';
 
 // Kullanıcının görünen kanallarının ilk sağlayıcısı (kota yönlendirmeleri için).
 // Yoksa null döner, çağrıcı normal akışa devam eder.
@@ -59,6 +59,12 @@ export const getPlaylist = async (req, res) => {
     if (!user) return res.sendStatus(401);
     const shareScope = getShareScope(user);
     if (shareScope.isExpired) return res.sendStatus(403);
+
+    // Kisi basi koruma: 10sn'de liste soran oynaticilar (or. Televizio) kotayi
+    // delmesin. Saatte 10 indirme; kurulum + tekrarlar rahat sigar, dongu 429 yer.
+    if (!user.is_admin && !checkUserEndpointLimit(user.id, 'playlist', 10, 3600)) {
+      return userEndpointLimitExceeded(res);
+    }
 
     // Direct-only: direct=1 yoksa 403 (paylasim misafiri kendi token listesini alir).
     if (!shareScope.isShareGuest && !wantsDirectUpstream(req)) return res.sendStatus(403);
@@ -278,6 +284,11 @@ export const xmltv = async (req, res) => {
     if (!user) return res.sendStatus(401);
     const shareScope = getShareScope(user);
     if (shareScope.isExpired) return res.sendStatus(403);
+
+    // Kisi basi koruma: panel rehberi uretimi MB'lar tutar; saatte 10 indirme.
+    if (!user.is_admin && !checkUserEndpointLimit(user.id, 'xmltv', 10, 3600)) {
+      return userEndpointLimitExceeded(res);
+    }
 
     // Kota modu: xmltv.php?direct=1 → rehber de upstream'den insin.
     // (Not: panelin birleştirilmiş rehberi yerine ham upstream rehberi gelir.

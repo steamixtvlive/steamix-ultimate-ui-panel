@@ -368,6 +368,29 @@ export function requireDirectUpstream(req, res) {
   return false;
 }
 
+// Kisi basi agir uc koruma: 10sn'de liste soran oynaticilar kotayi delmesin.
+// Bellek ici kayar pencere (deployda sifirlanir, zararsiz). Adminler muaftir
+// (cagrida kontrol edilir). Donus: true = izin, false = limit doldu.
+const endpointHits = new Map();
+
+export function checkUserEndpointLimit(userId, key, max, windowSec) {
+  const now = Date.now();
+  const k = `${userId}:${key}`;
+  let arr = endpointHits.get(k);
+  if (!arr) { arr = []; endpointHits.set(k, arr); }
+  const cutoff = now - windowSec * 1000;
+  while (arr.length && arr[0] <= cutoff) arr.shift();
+  if (arr.length >= max) return false;
+  arr.push(now);
+  if (endpointHits.size > 20000) endpointHits.clear();
+  return true;
+}
+
+export function userEndpointLimitExceeded(res) {
+  res.setHeader('Retry-After', '600');
+  return res.status(429).json({ error: 'too_many_requests' });
+}
+
 export function buildStreamHeaders(userAgent, metadata, label) {
   const headers = {
     'User-Agent': userAgent || DEFAULT_USER_AGENT,
