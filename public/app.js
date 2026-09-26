@@ -731,12 +731,12 @@ function renderUserDetails(u) {
     const elPass = document.getElementById('xtream-pass');
     if(elPass) elPass.value = pass;
     const elEpg = document.getElementById('epg-url');
-    if(elEpg) elEpg.value = `${baseUrl}/xmltv.php?username=${encodeURIComponent(u.username)}&password=${encodeURIComponent(pass)}`;
+    if(elEpg) elEpg.value = `${baseUrl}/xmltv.php?username=${encodeURIComponent(u.username)}&password=${encodeURIComponent(pass)}&direct=1`;
 
     // Update M3U Link
     const m3uLinkEl = document.getElementById('m3u-link');
     if (m3uLinkEl) {
-        m3uLinkEl.value = `${baseUrl}/get.php?username=${encodeURIComponent(u.username)}&password=${encodeURIComponent(pass)}&type=m3u_plus&output=ts`;
+        m3uLinkEl.value = `${baseUrl}/get.php?username=${encodeURIComponent(u.username)}&password=${encodeURIComponent(pass)}&type=m3u_plus&output=ts&direct=1`;
     }
 
     // Update HDHomeRun Tab
@@ -3176,12 +3176,12 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('xtream-url').value = window.location.origin;
   document.getElementById('xtream-user').value = '-';
   document.getElementById('xtream-pass').value = t('passwordPlaceholder');
-  document.getElementById('epg-url').value = window.location.origin + '/xmltv.php?username=<USER>&password=<PASS>';
+  document.getElementById('epg-url').value = window.location.origin + '/xmltv.php?username=<USER>&password=<PASS>&direct=1';
 
   const m3uLinkEl = document.getElementById('m3u-link');
   if (m3uLinkEl) {
       const baseUrl = window.location.origin;
-      m3uLinkEl.value = `${baseUrl}/get.php?username=DUMMY&password=DUMMY&type=m3u_plus&output=ts`;
+      m3uLinkEl.value = `${baseUrl}/get.php?username=DUMMY&password=DUMMY&type=m3u_plus&output=ts&direct=1`;
   }
   
   const importBtn = document.getElementById('import-categories-btn');

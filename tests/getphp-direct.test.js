@@ -84,12 +84,19 @@ describe('get.php direct kota modu', () => {
     expect(out.redirected.url).toBe('http://ornek.test:8080/get.php?username=u&password=p&type=m3u_plus&output=ts');
   });
 
-  it('parametresiz normal curated liste doner (direct yok)', async () => {
+  it('parametresiz get.php 403 doner (direct-only)', async () => {
     const { out, res } = fakeRes();
     await getPlaylist(fakeReq({ username: 't', password: 'x', type: 'm3u_plus', output: 'ts' }), res);
     expect(out.redirected).toBeNull();
-    expect(out.body.startsWith('#EXTM3U')).toBe(true);
-    expect(out.body).not.toContain('direct=1');
+    expect(out.status).toBe(403);
+    expect(out.body).toBe('');
+  });
+
+  it('parametresiz xmltv.php 403 doner (direct-only)', async () => {
+    const { out, res } = fakeRes();
+    await xmltv(fakeReq({ username: 't', password: 'x' }), res);
+    expect(out.redirected).toBeNull();
+    expect(out.status).toBe(403);
   });
 
   it('xmltv.php?direct=1 rehberi upstream adresine yonlendirir', async () => {

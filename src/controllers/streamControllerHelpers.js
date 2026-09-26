@@ -358,6 +358,16 @@ export function wantsProxiedUpstream(req) {
   return v === '1' || v === 'true' || v === 'yes';
 }
 
+// Direct-only zorunlulugu: direct=1 yoksa 403.
+// Token-auth (paylasim misafiri) yollari muaftir: misafir proxy ile izler,
+// upstream kimligi disari sizmasin.
+export function requireDirectUpstream(req, res) {
+  if (req && req.path && req.path.includes('/token/auth/')) return true;
+  if (wantsDirectUpstream(req)) return true;
+  res.sendStatus(403);
+  return false;
+}
+
 export function buildStreamHeaders(userAgent, metadata, label) {
   const headers = {
     'User-Agent': userAgent || DEFAULT_USER_AGENT,

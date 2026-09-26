@@ -25,6 +25,7 @@ import {
   sendTrackInfo,
   shareGuestAllowed,
   parseMetadata,
+  requireDirectUpstream,
   wantsProxiedUpstream
 } from './streamControllerHelpers.js';
 
@@ -44,6 +45,10 @@ export const proxyMovie = async (req, res) => {
     if (!channel) return res.sendStatus(404);
 
     if (!shareGuestAllowed(user, channel)) return res.sendStatus(403);
+
+    // Direct-only: direct=1 yoksa 403 (paylasim misafiri muaf).
+    if (!requireDirectUpstream(req, res)) return;
+
     const ext = normalizeContainerExtension(channel.mime_type, 'mp4');
 
     const sessionName = `${channel.name} (VOD)`;
@@ -223,6 +228,9 @@ export const proxySeries = async (req, res) => {
     const seriesEpisode = getSeriesEpisode(epIdRaw, user.id);
     if (!seriesEpisode) return res.sendStatus(404);
     if (!shareGuestAllowed(user, seriesEpisode)) return res.sendStatus(403);
+
+    // Direct-only: direct=1 yoksa 403 (paylasim misafiri muaf).
+    if (!requireDirectUpstream(req, res)) return;
 
     const provider = seriesEpisode;
     const remoteEpisodeId = seriesEpisode.remote_episode_id;

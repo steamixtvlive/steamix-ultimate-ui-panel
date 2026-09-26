@@ -21,6 +21,7 @@ import {
   sanitizeM3uTag,
   wantsGzipResponse
 } from './xtreamControllerUtils.js';
+import { wantsDirectUpstream } from './streamControllerHelpers.js';
 
 // Kullanıcının görünen kanallarının ilk sağlayıcısı (kota yönlendirmeleri için).
 // Yoksa null döner, çağrıcı normal akışa devam eder.
@@ -59,12 +60,16 @@ export const getPlaylist = async (req, res) => {
     const shareScope = getShareScope(user);
     if (shareScope.isExpired) return res.sendStatus(403);
 
+    // Direct-only: direct=1 yoksa 403 (paylasim misafiri kendi token listesini alir).
+    if (!shareScope.isShareGuest && !wantsDirectUpstream(req)) return res.sendStatus(403);
+
     // Kota modu: get.php?direct=1 → listenin kendisi de upstream'den insin.
     // Oynatıcı 302 yer, dosya baytları Render'a uğramaz. Oturum sayımı ve
     // istatistik, listedeki yayın linkleri üzerinden yürür.
     // (Not: bu modda panelin özel isim/filtre düzenlemesi uygulanmaz;
-    // ham upstream listesi gelir.)
-    if (req.query.direct === '1' || req.query.redirect === '1') {
+    // ham upstream listesi gelir. Paylasim misafiri upstream'e degil,
+    // kendi token listesine yonlenir.)
+    if ((req.query.direct === '1' || req.query.redirect === '1') && !shareScope.isShareGuest) {
       const up = findFirstUpstreamProvider(user.id);
       if (up) {
         const t = (req.query.type || 'm3u').trim() || 'm3u';
@@ -102,7 +107,7 @@ export const getPlaylist = async (req, res) => {
       if (shareScope.isShareGuest && tokenParam) {
         header += ` url-tvg="${baseUrl}/xmltv.php${tokenParam}"`;
       } else {
-        header += ` url-tvg="${baseUrl}/xmltv.php?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}"`;
+        header += ` url-tvg="${baseUrl}/xmltv.php?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}&direct=1"`;
       }
     }
 
@@ -274,9 +279,13 @@ export const xmltv = async (req, res) => {
     const shareScope = getShareScope(user);
     if (shareScope.isExpired) return res.sendStatus(403);
 
+    // Direct-only: direct=1 yoksa 403 (paylasim misafiri panel rehberini alir).
+    if (!shareScope.isShareGuest && !wantsDirectUpstream(req)) return res.sendStatus(403);
+
     // Kota modu: xmltv.php?direct=1 → rehber de upstream'den insin.
-    // (Not: panelin birleştirilmiş rehberi yerine ham upstream rehberi gelir.)
-    if (req.query.direct === '1' || req.query.redirect === '1') {
+    // (Not: panelin birleştirilmiş rehberi yerine ham upstream rehberi gelir.
+    // Paylasim misafiri upstream'e degil, panel rehberine yonlenir.)
+    if ((req.query.direct === '1' || req.query.redirect === '1') && !shareScope.isShareGuest) {
       const up = findFirstUpstreamProvider(user.id);
       if (up) {
         return res.redirect(302, `${up.base}/xmltv.php?username=${encodeURIComponent(up.username)}&password=${encodeURIComponent(up.password)}`);
