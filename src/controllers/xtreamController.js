@@ -279,9 +279,6 @@ export const xmltv = async (req, res) => {
     const shareScope = getShareScope(user);
     if (shareScope.isExpired) return res.sendStatus(403);
 
-    // Direct-only: direct=1 yoksa 403 (paylasim misafiri panel rehberini alir).
-    if (!shareScope.isShareGuest && !wantsDirectUpstream(req)) return res.sendStatus(403);
-
     // Kota modu: xmltv.php?direct=1 → rehber de upstream'den insin.
     // (Not: panelin birleştirilmiş rehberi yerine ham upstream rehberi gelir.
     // Paylasim misafiri upstream'e degil, panel rehberine yonlenir.)

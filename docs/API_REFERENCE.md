@@ -515,24 +515,25 @@ when a public or upstream URL is generated. Known MIME types are mapped to
 their standard suffixes, and values containing path, query, fragment, percent,
 control, or playlist-injection characters fall back to a safe extension.
 
-### Direct-only (kota korumasi)
+### Direct-only liste + varsayilan 302 yayin (kota korumasi)
 
-- `GET /get.php` ve `GET /xmltv.php` SADECE `?direct=1` (veya `?redirect=1`)
-  ile calisir; parametre yoksa `403` doner. `direct=1` ile istemci upstream
+- `GET /get.php` SADECE `?direct=1` (veya `?redirect=1`) ile calisir;
+  parametre yoksa `403` doner. `direct=1` ile istemci upstream `get.php`
   adresine 302 ile yonlendirilir (dosya baytlari bu sunucuya ugramaz;
   panelin ozel isim/filtre duzenlemesi uygulanmaz, ham upstream listesi gelir).
-- `/live/...`, `/movie/...`, `/series/...`, `/timeshift/...`, MPD ve HLS
-  segment yollari SADECE `?direct=1` ile calisir; yoksa `403` doner.
-  `direct=1` ile oturum sayimi + istatistik yapilir, video baytlari
-  upstream'den iner (kota korunur).
-- `?proxy=1`, transcode ve mp4 istekleri de ONCE direct kapisindan gecer:
-  `direct=1` YOKSA `403` doner (proxy/VPN ile baypas edilemez). `direct=1`
-  VARSA eski davranis aynen surer (proxy/transcode calisir, kota bilerek
-  harcanir).
-- Paylasim misafiri (`/token/auth/...`) yollari muaftir: misafir her zaman
-  proxy ile izler, upstream kimligi disari sizmaz.
-- `player_api.php` (kimlik + katalog) bu kuralin disindadir; panel arayuzu
-  gosterdigi `get.php`/`xmltv.php` linklerine `&direct=1` ekler.
+- `/live/...`, `/movie/...`, `/series/...`, `/timeshift/...` istekleri
+  **varsayilan** olarak upstream adresine 302 ile yonlendirilir: oturum
+  sayimi ve istatistik yapilir, video baytlari bu sunucudan gecmez (kota
+  korunur). Boylece oynaticilarin kendilerinin kurdugu sade linkler de
+  calisir (Xtream girisiyle baglanan TiviMate/APK bozulmaz).
+  Yönlendirmeyi kapatıp baytları bu sunucudan akıtmak için `?proxy=1`
+  verilir. Token-auth linkleri, transcode/mp4 istekleri ve upstream'in
+  özel başlık istediği yayınlar her zaman proxy'lenir.
+- Paylasim misafiri (`/token/auth/...`) her zaman proxy ile izler, upstream
+  kimligi disari sizmaz.
+- `player_api.php` (kimlik + katalog) ve `xmltv.php` (panel rehberi) bu
+  kuralin disindadir; panel arayuzu gosterdigi `get.php` linkine `&direct=1`
+  ekler.
 
 M3U exports sanitize EPG identifiers as quoted attributes and keep DRM properties
 on a single line. Quotes inside DRM values are preserved for JSON-based license

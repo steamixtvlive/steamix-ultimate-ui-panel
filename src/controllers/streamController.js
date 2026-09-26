@@ -22,7 +22,6 @@ import {
   getChannel,
   parseMetadata,
   recordStreamStat,
-  requireDirectUpstream,
   reserveChannelSession,
   shareGuestAllowed,
   wantsProxiedUpstream
@@ -59,9 +58,6 @@ export const proxyMpd = async (req, res) => {
     let backupStreamUrls = [];
 
     if (!shareGuestAllowed(user, channel)) return res.sendStatus(403);
-
-    // Direct-only: direct=1 yoksa 403 (paylasim misafiri muaf).
-    if (!requireDirectUpstream(req, res)) return;
 
     const sessionName = `${channel.name} (DASH)`;
     const usesOriginalUrl = meta && meta.original_url;
@@ -160,9 +156,6 @@ export const proxyLive = async (req, res) => {
     if (!channel) return res.sendStatus(404);
 
     if (!shareGuestAllowed(user, channel)) return res.sendStatus(403);
-
-    // Direct-only: direct=1 yoksa 403 (paylasim misafiri muaf).
-    if (!requireDirectUpstream(req, res)) return;
 
     let reqExt = 'ts';
     if (req.path.endsWith('.m3u8')) reqExt = 'm3u8';
@@ -415,9 +408,6 @@ export const proxySegment = async (req, res) => {
         }
     }
 
-    // Direct-only: direct=1 yoksa 403 (paylasim misafiri muaf).
-    if (!requireDirectUpstream(req, res)) return;
-
     let targetUrl;
     let headers = {
         'User-Agent': DEFAULT_USER_AGENT,
@@ -564,9 +554,6 @@ export const proxyTimeshift = async (req, res) => {
     if (!channel) return res.sendStatus(404);
 
     if (!shareGuestAllowed(user, channel)) return res.sendStatus(403);
-
-    // Direct-only: direct=1 yoksa 403 (paylasim misafiri muaf).
-    if (!requireDirectUpstream(req, res)) return;
 
     if (epochStart !== null) {
       const now = Math.floor(Date.now() / 1000);

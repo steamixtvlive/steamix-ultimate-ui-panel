@@ -103,14 +103,15 @@ describe('film direct-only kapisi', () => {
     try { fs.rmSync(TEST_DB_DIR, { recursive: true, force: true }); } catch {}
   });
 
-  it('direct=1 yoksa 403 doner', async () => {
+  it('varsayilanda 302 yonlendirir (kapi kalkti)', async () => {
     const { out, res } = fakeRes();
     await proxyMovie(fakeReq(), res);
-    expect(out.redirected).toBeNull();
-    expect(out.status).toBe(403);
+    expect(out.redirected).toBeTruthy();
+    expect(out.redirected.code).toBe(302);
+    expect(out.redirected.url).toBe('http://ornek.test:8080/movie/u/p/888.mp4');
   });
 
-  it('direct=1 ile 302 yonlendirir', async () => {
+  it('direct=1 ile de 302 yonlendirir', async () => {
     const { out, res } = fakeRes();
     await proxyMovie(fakeReq({ direct: '1' }), res);
     expect(out.redirected).toBeTruthy();

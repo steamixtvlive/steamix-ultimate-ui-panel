@@ -92,11 +92,11 @@ describe('get.php direct kota modu', () => {
     expect(out.body).toBe('');
   });
 
-  it('parametresiz xmltv.php 403 doner (direct-only)', async () => {
+  it('parametresiz xmltv.php panel rehberini doner (kapi yok)', async () => {
     const { out, res } = fakeRes();
     await xmltv(fakeReq({ username: 't', password: 'x' }), res);
     expect(out.redirected).toBeNull();
-    expect(out.status).toBe(403);
+    expect(out.status).toBe(200);
   });
 
   it('xmltv.php?direct=1 rehberi upstream adresine yonlendirir', async () => {

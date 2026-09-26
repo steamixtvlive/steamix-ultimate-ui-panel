@@ -85,31 +85,17 @@ describe('canli varsayilan yonlendirme (kota)', () => {
     try { fs.rmSync(TEST_DB_DIR, { recursive: true, force: true }); } catch {}
   });
 
-  it('direct=1 yoksa 403 doner (direct-only)', async () => {
+  it('varsayilanda 302 ile host kokune yonlendirir (proxy yok)', async () => {
     const { out, res } = fakeRes();
     await proxyLive(fakeReq(), res);
-    expect(out.redirected).toBeNull();
-    expect(out.status).toBe(403);
-  });
-
-  it('direct=1 ile 302 yonlendirir (proxy yok)', async () => {
-    const { out, res } = fakeRes();
-    await proxyLive(fakeReq({ direct: '1' }), res);
     expect(out.redirected).toBeTruthy();
     expect(out.redirected.code).toBe(302);
     expect(out.redirected.url).toBe('http://ornek.test:8080/live/u/p/777.ts');
   });
 
-  it('direct=1 yoksa ?proxy=1 bile 403 doner (direct-only)', async () => {
+  it('?proxy=1 verilirse proxy yoluna girer (yonlendirme yok)', async () => {
     const { out, res } = fakeRes();
     await proxyLive(fakeReq({ proxy: '1' }), res);
-    expect(out.redirected).toBeNull();
-    expect(out.status).toBe(403);
-  });
-
-  it('direct=1 ile birlikte ?proxy=1 proxy yoluna girer (yonlendirme yok)', async () => {
-    const { out, res } = fakeRes();
-    await proxyLive(fakeReq({ direct: '1', proxy: '1' }), res);
     expect(out.redirected).toBeNull();
     expect(out.status).toBe(502);
   });
