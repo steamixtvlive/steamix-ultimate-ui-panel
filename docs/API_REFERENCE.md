@@ -538,11 +538,12 @@ control, or playlist-injection characters fall back to a safe extension.
 - `player_api.php` (kimlik + katalog) ve `xmltv.php` (panel rehberi) bu
   kuralin disindadir; panel arayuzu gosterdigi `get.php` linkine `&direct=1`
   ekler.
-- Kisi basi agir uc korumasi (adminler muaftir): `get.php` ve panel
-  `xmltv.php` saatte 10'ar; kategorisiz (tam) `get_*_streams` saatte 20;
-  kategorili alt kirilimlar saatte 200; kategori listeleri saatte 60.
-  Asimda `429 + Retry-After` doner. Kurulum patlamalari limitlerin
-  altindadir; 10sn'de liste soran donguler 429 yer.
+- Kisi basi agir uc korumasi, GUNLUK kayar pencere (adminler muaftir):
+  `get.php` ve panel `xmltv.php` gunde 3 (misafir 1); kategorisiz (tam)
+  `get_*_streams` gunde 10; kategorili alt kirilimlar gunde 400; kategori
+  listeleri gunde 400. Reddedilen (401/403) istekler hak yemez. Asimda
+  `429 + Retry-After` doner. Kurulum + tekrarlar limitlerin altindadir;
+  10sn'de liste soran donguler gunun geri kalaninda 429 yer.
 
 M3U exports sanitize EPG identifiers as quoted attributes and keep DRM properties
 on a single line. Quotes inside DRM values are preserved for JSON-based license

@@ -60,15 +60,15 @@ export const getPlaylist = async (req, res) => {
     const shareScope = getShareScope(user);
     if (shareScope.isExpired) return res.sendStatus(403);
 
-    // Kisi basi koruma: 10sn'de liste soran oynaticilar (or. Televizio) kotayi
-    // delmesin. Normal kullanici saatte 10, misafir saatte 2 indirme;
-    // kurulum + tekrarlar rahat sigar, dongu 429 yer.
-    if (!user.is_admin && !checkUserEndpointLimit(user.id, 'playlist', shareScope.isShareGuest ? 2 : 10, 3600)) {
-      return userEndpointLimitExceeded(res);
-    }
-
     // Direct-only: direct=1 yoksa 403 (paylasim misafiri kendi token listesini alir).
     if (!shareScope.isShareGuest && !wantsDirectUpstream(req)) return res.sendStatus(403);
+
+    // Kisi basi koruma: 10sn'de liste soran oynaticilar (or. Televizio) kotayi
+    // delmesin. REDDEDILEN istekler hak yemez. Normal kullanici gunde 3,
+    // misafir gunde 1 indirme; kurulum rahat sigar, dongu 429 yer.
+    if (!user.is_admin && !checkUserEndpointLimit(user.id, 'playlist', shareScope.isShareGuest ? 1 : 3, 86400)) {
+      return userEndpointLimitExceeded(res);
+    }
 
     // Kota modu: get.php?direct=1 → listenin kendisi de upstream'den insin.
     // Oynatıcı 302 yer, dosya baytları Render'a uğramaz. Oturum sayımı ve
@@ -286,8 +286,8 @@ export const xmltv = async (req, res) => {
     const shareScope = getShareScope(user);
     if (shareScope.isExpired) return res.sendStatus(403);
 
-    // Kisi basi koruma: panel rehberi uretimi MB'lar tutar.
-    if (!user.is_admin && !checkUserEndpointLimit(user.id, 'xmltv', shareScope.isShareGuest ? 2 : 10, 3600)) {
+    // Kisi basi koruma: panel rehberi uretimi MB'lar tutar. Gunde 3 (misafir 1).
+    if (!user.is_admin && !checkUserEndpointLimit(user.id, 'xmltv', shareScope.isShareGuest ? 1 : 3, 86400)) {
       return userEndpointLimitExceeded(res);
     }
 

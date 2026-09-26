@@ -108,16 +108,16 @@ describe('get.php direct kota modu', () => {
     expect(out.redirected.url).toBe('http://ornek.test:8080/xmltv.php?username=u&password=p');
   });
 
-  it('art arda 11 liste indirmenin son ikisi 429 yer (kisi basi koruma)', async () => {
+  it('gunde 3 indirmeden sonrasi 429 yer, reddedilenler hak yemez (kisi basi koruma)', async () => {
     const codes = [];
     for (let i = 0; i < 11; i++) {
       const { out, res } = fakeRes();
       await getPlaylist(fakeReq({ username: 't', password: 'x', type: 'm3u_plus', output: 'ts', direct: '1' }), res);
       codes.push(out.redirected ? 302 : out.status);
     }
-    // onceki testlerde ayni sahte kullanici 2 hak kullandi: 1x302 + 1x403
-    // bu dongude 8x302 sonra 3x429 beklenir
-    expect(codes.slice(0, 8)).toEqual(Array(8).fill(302));
-    expect(codes.slice(8)).toEqual([429, 429, 429]);
+    // onceki testte ayni sahte kullanici 1 hak kullandi (403'ler sayilmaz);
+    // bu dongude ilk 2x302 sonra 9x429 beklenir
+    expect(codes.slice(0, 2)).toEqual([302, 302]);
+    expect(codes.slice(2)).toEqual(Array(9).fill(429));
   });
 });
