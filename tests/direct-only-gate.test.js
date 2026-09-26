@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { checkUserEndpointLimit, requireDirectUpstream } from '../src/controllers/streamControllerHelpers.js';
+import { requireDirectUpstream } from '../src/controllers/streamControllerHelpers.js';
 
 const { TEST_DB_DIR } = vi.hoisted(() => {
   const fsModule = require('node:fs');
@@ -49,24 +49,6 @@ describe('requireDirectUpstream helper', () => {
     code = null;
     expect(requireDirectUpstream({ path: '/series/a/b/1.mp4', query: { direct: '0' } }, res)).toBe(false);
     expect(code).toBe(403);
-  });
-});
-
-describe('checkUserEndpointLimit (kisi basi koruma)', () => {
-  it('limit altinda izin verir, ustunde reddeder', () => {
-    const uid = `testkisi-${Date.now()}-1`;
-    expect(checkUserEndpointLimit(uid, 'deneme', 3, 3600)).toBe(true);
-    expect(checkUserEndpointLimit(uid, 'deneme', 3, 3600)).toBe(true);
-    expect(checkUserEndpointLimit(uid, 'deneme', 3, 3600)).toBe(true);
-    expect(checkUserEndpointLimit(uid, 'deneme', 3, 3600)).toBe(false);
-  });
-
-  it('farkli kullanici ve anahtarlar birbirinden bagimsizdir', () => {
-    const stamp = Date.now();
-    expect(checkUserEndpointLimit(`kisiA-${stamp}`, 'liste', 1, 3600)).toBe(true);
-    expect(checkUserEndpointLimit(`kisiA-${stamp}`, 'liste', 1, 3600)).toBe(false);
-    expect(checkUserEndpointLimit(`kisiB-${stamp}`, 'liste', 1, 3600)).toBe(true);
-    expect(checkUserEndpointLimit(`kisiA-${stamp}`, 'epg', 1, 3600)).toBe(true);
   });
 });
 

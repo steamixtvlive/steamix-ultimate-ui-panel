@@ -21,7 +21,7 @@ import {
   sanitizeM3uTag,
   wantsGzipResponse
 } from './xtreamControllerUtils.js';
-import { checkUserEndpointLimit, userEndpointLimitExceeded, wantsDirectUpstream } from './streamControllerHelpers.js';
+import { wantsDirectUpstream } from './streamControllerHelpers.js';
 
 // Kullanıcının görünen kanallarının ilk sağlayıcısı (kota yönlendirmeleri için).
 // Yoksa null döner, çağrıcı normal akışa devam eder.
@@ -62,13 +62,6 @@ export const getPlaylist = async (req, res) => {
 
     // Direct-only: direct=1 yoksa 403 (paylasim misafiri kendi token listesini alir).
     if (!shareScope.isShareGuest && !wantsDirectUpstream(req)) return res.sendStatus(403);
-
-    // Kisi basi koruma: 10sn'de liste soran oynaticilar (or. Televizio) kotayi
-    // delmesin. REDDEDILEN istekler hak yemez. direct=1 sadece 302 dondurur
-    // (bayt sayilmaz) o yuzden bol; MB tasiyan misafir listesi gunde 2.
-    if (!user.is_admin && !checkUserEndpointLimit(user.id, 'playlist', shareScope.isShareGuest ? 2 : 100, 86400)) {
-      return userEndpointLimitExceeded(res);
-    }
 
     // Kota modu: get.php?direct=1 → listenin kendisi de upstream'den insin.
     // Oynatıcı 302 yer, dosya baytları Render'a uğramaz. Oturum sayımı ve
@@ -285,16 +278,6 @@ export const xmltv = async (req, res) => {
     if (!user) return res.sendStatus(401);
     const shareScope = getShareScope(user);
     if (shareScope.isExpired) return res.sendStatus(403);
-
-    // Kisi basi koruma: panel rehberi MB'lar tutar (gunde 10), upstream 302
-    // bayt sayilmaz (gunde 100). Misafir panel rehberi gunde 2.
-    if (!user.is_admin) {
-      const xmltvKey = shareScope.isShareGuest ? 'xmltv-guest' : (wantsDirectUpstream(req) ? 'xmltv-direct' : 'xmltv-panel');
-      const xmltvMax = shareScope.isShareGuest ? 2 : (wantsDirectUpstream(req) ? 100 : 10);
-      if (!checkUserEndpointLimit(user.id, xmltvKey, xmltvMax, 86400)) {
-        return userEndpointLimitExceeded(res);
-      }
-    }
 
     // Kota modu: xmltv.php?direct=1 → rehber de upstream'den insin.
     // (Not: panelin birleştirilmiş rehberi yerine ham upstream rehberi gelir.

@@ -22,7 +22,6 @@ import {
   parseBatchStreamIds,
   streamJsonResponse
 } from './xtreamControllerUtils.js';
-import { checkUserEndpointLimit, userEndpointLimitExceeded } from './streamControllerHelpers.js';
 
 export const playerApi = async (req, res) => {
   try {
@@ -49,23 +48,6 @@ export const playerApi = async (req, res) => {
           ...getShareValidityInfo(user, now)
         }
       });
-    }
-
-    // Kisi basi agir uc korumasi: 10sn'de liste soran oynaticilar kotayi
-    // delmesin. Yonetici muaftir. Gunluk pencerede kurulumlar rahat sigar.
-    if (!user.is_admin) {
-      const catId = (req.query.category_id || '').trim();
-      let limitKey = null;
-      let limitMax = 0;
-      if (action === 'get_live_streams' || action === 'get_vod_streams' || action === 'get_series') {
-        if (!catId) { limitKey = 'streams-full'; limitMax = 10; }
-        else { limitKey = 'streams-cat'; limitMax = 400; }
-      } else if (action === 'get_live_categories' || action === 'get_vod_categories' || action === 'get_series_categories') {
-        limitKey = 'categories'; limitMax = 400;
-      }
-      if (limitKey && !checkUserEndpointLimit(user.id, limitKey, limitMax, 86400)) {
-        return userEndpointLimitExceeded(res);
-      }
     }
 
     if (!action || action === '') {

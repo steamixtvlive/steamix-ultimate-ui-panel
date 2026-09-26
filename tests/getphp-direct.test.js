@@ -48,7 +48,6 @@ function fakeRes() {
       write: (c) => { out.body += c; },
       end: () => {},
       sendStatus: (c) => { out.status = c; },
-      status: (c) => ({ json: (b) => { out.status = c; out.body = JSON.stringify(b); } }),
       redirect: (c, u) => { out.redirected = { code: c, url: u }; },
     }
   };
@@ -106,15 +105,5 @@ describe('get.php direct kota modu', () => {
     expect(out.redirected).toBeTruthy();
     expect(out.redirected.code).toBe(302);
     expect(out.redirected.url).toBe('http://ornek.test:8080/xmltv.php?username=u&password=p');
-  });
-
-  it('art arda 12 indirme 302 gecer (gunluk 100 hak, reddedilenler sayilmaz)', async () => {
-    const codes = [];
-    for (let i = 0; i < 12; i++) {
-      const { out, res } = fakeRes();
-      await getPlaylist(fakeReq({ username: 't', password: 'x', type: 'm3u_plus', output: 'ts', direct: '1' }), res);
-      codes.push(out.redirected ? 302 : out.status);
-    }
-    expect(codes).toEqual(Array(12).fill(302));
   });
 });
