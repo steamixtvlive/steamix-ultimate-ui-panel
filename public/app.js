@@ -145,19 +145,20 @@ async function refreshCurrentUserPermissions() {
 }
 
 function getProxiedUrl(url) {
-  if (!url) return '';
+    if (!url) return '';
 
-  // Check if URL is already relative (local)
-  if (url.startsWith('/')) return url;
+    // Check if URL is already relative (local)
+    if (url.startsWith('/')) return url;
 
-  // Always proxy external URLs (HTTP/HTTPS) to leverage caching and avoid mixed content
-  if (url.startsWith('http://') || url.startsWith('https://')) {
-    const token = getToken();
-    if (token) {
-      return `/api/proxy/image?url=${encodeURIComponent(url)}&token=${token}`;
+    // Kota: https logolar tarayicidan direkt cekilir (Render'a ugramaz).
+    // Sadece http:// proksilenir (karisik icerik engeli icin).
+    if (url.startsWith('http://')) {
+      const token = getToken();
+      if (token) {
+        return `/api/proxy/image?url=${encodeURIComponent(url)}&token=${token}`;
+      }
     }
-  }
-  return url;
+    return url;
 }
 
 let currentUser = null;

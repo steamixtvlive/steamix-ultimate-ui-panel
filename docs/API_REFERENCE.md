@@ -480,6 +480,10 @@ logs.
 - `GET /api/proxy/image?url=<url>&provider_id=<id>` (`provider_id` optional)
 - `DELETE /api/proxy/picons`
 
+Panel arayuzu `https://` logolari proksilemeden tarayicidan direkt ceker
+(kota yemez); sadece `http://` logolar karisik icerik engeli icin
+`/api/proxy/image` uzerinden gecer.
+
 ## Xtream and Player Compatibility
 
 - `GET /cpp`
