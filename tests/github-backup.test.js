@@ -26,8 +26,10 @@ vi.mock('../src/config/constants.js', async () => {
 import db, { initDb } from '../src/database/db.js';
 import { encryptWithPassword, decryptWithPassword } from '../src/utils/crypto.js';
 import {
+  backupFileAgeMin,
   backupFileName,
   databaseIsEmpty,
+  ensureFreshBackup,
   githubBackupConfig,
   pushBackupToGithub,
   restoreLatestBackupFromGithub,
@@ -199,5 +201,27 @@ describe('program-ici GitHub yedek', () => {
   it('databaseIsEmpty bos/dolu ayirt eder', () => {
     expect(databaseIsEmpty()).toBe(false);
     expect(githubBackupConfig().branch).toBe('backups');
+  });
+
+  it('backupFileAgeMin dosya adindan yas hesaplar', () => {
+    const now = Date.UTC(2026, 8, 26, 13, 50, 0);
+    expect(backupFileAgeMin('backup-20260926-1340.bin', now)).toBeCloseTo(10, 0);
+    expect(backupFileAgeMin('backup-20260925-1340.bin', now)).toBeCloseTo(1440 + 10, 0);
+    expect(backupFileAgeMin('sacma-ad.bin', now)).toBe(Infinity);
+    expect(backupFileAgeMin('', now)).toBe(Infinity);
+  });
+
+  it('ensureFreshBackup taze yedek varsa yazmaz (restart kanamasi yok)', async () => {
+    setGhEnv({ GITHUB_BACKUP_INTERVAL_MIN: '1440' });
+    db.prepare("INSERT OR IGNORE INTO users (id, username, password) VALUES (77, 'taze-test', 'x')").run();
+    const freshName = backupFileName(new Date()).split('/').pop();
+    vi.stubGlobal('fetch', async () => ({
+      ok: true,
+      status: 200,
+      json: async () => [{ name: freshName }]
+    }));
+    const res = await ensureFreshBackup();
+    expect(res.ok).toBe(false);
+    expect(res.detail).toMatch(/taze/);
   });
 });

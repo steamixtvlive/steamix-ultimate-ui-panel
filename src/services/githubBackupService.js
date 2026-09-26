@@ -168,6 +168,45 @@ function recordPush(ok, detail) {
   return lastPush;
 }
 
+// Dalaki en yeni yedegin yasi (dakika). Yoksa/okunamazsa sonsuz doner
+// (yedek gerekli); liste hatasinda 0 doner (spam olmasin, araliga birakilir).
+export function backupFileAgeMin(fileName, nowMs = Date.now()) {
+  const m = /^backup-(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})\.bin$/.exec(fileName || '');
+  if (!m) return Infinity;
+  const t = Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]);
+  return (nowMs - t) / 60000;
+}
+
+export async function latestBackupAgeMin(cfg) {
+  try {
+    const listRes = await fetch(`${API}/repos/${cfg.repo}/contents/backups?ref=${cfg.branch}`, {
+      headers: githubHeaders(cfg.token)
+    });
+    if (!listRes.ok) return Infinity;
+    const listed = await listRes.json();
+    const bins = (Array.isArray(listed) ? listed : [])
+      .map((f) => f && f.name)
+      .filter((n) => typeof n === 'string' && n.endsWith('.bin'))
+      .sort();
+    if (!bins.length) return Infinity;
+    return backupFileAgeMin(bins[bins.length - 1]);
+  } catch {
+    return 0;
+  }
+}
+
+// Acilis yedegi: dalda taze yedek varsa YAZMA (restart'lar kotayi delmesin).
+export async function ensureFreshBackup() {
+  const cfg = githubBackupConfig();
+  if (!cfg.token || !cfg.password) return recordPush(false, 'GITHUB_BACKUP_TOKEN / şifre yok');
+  if (databaseIsEmpty()) return recordPush(false, 'DB bos - yedek yazilmadi');
+  const age = await latestBackupAgeMin(cfg);
+  if (age < cfg.intervalMin) {
+    return recordPush(false, `Yedek taze (${Math.max(0, Math.round(age))} dk) - yazilmadi`);
+  }
+  return runPushBackup();
+}
+
 export function startGithubBackupScheduler() {
   if (backupTimer) clearInterval(backupTimer);
   if (firstPushTimer) clearTimeout(firstPushTimer);
@@ -177,10 +216,10 @@ export function startGithubBackupScheduler() {
     return false;
   }
   console.info(`💾 Program-içi GitHub yedek açık: her ${cfg.intervalMin} dk → ${cfg.repo}@${cfg.branch}`);
-  // Ilk yedek 60 sn icinde: Render deploy'lari sunucuyu yeniden baslattigi
-  // icin aralikli zamanlayici hic tetiklenmeden veri kaybolmasin.
+  // Acilis kontrolu (60 sn): taze yedek varsa atlanir; yoksa/eskiyse yazilir.
+  // Boylece sik restart'lar her seferinde MB'larca yedek yazmaz.
   firstPushTimer = setTimeout(() => {
-    runPushBackup().then((r) => { if (r && r.success === false) console.error('İlk otomatik yedek hatası:', r.error); });
+    ensureFreshBackup().then((r) => { if (r && r.success === false) console.error('İlk otomatik yedek hatası:', r.error); });
   }, 60 * 1000);
   backupTimer = setInterval(() => {
     runPushBackup().then((r) => { if (r && r.success === false) console.error('Otomatik yedek hatası:', r.error); });
