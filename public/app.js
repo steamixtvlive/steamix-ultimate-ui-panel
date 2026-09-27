@@ -1059,7 +1059,10 @@ function showEditUserModal(user) {
   // Set selected countries
   const allowedCountriesSelect = document.getElementById('edit-user-allowed-countries');
   const userCountries = (user.allowed_countries && user.allowed_countries !== 'null' && user.allowed_countries !== 'undefined') ? user.allowed_countries.split(',').map(c => c.trim().toUpperCase()) : [];
+  const allCountriesOpt = allowedCountriesSelect.querySelector('option[value=""]');
+  if (allCountriesOpt) allCountriesOpt.selected = userCountries.length === 0;
   Array.from(allowedCountriesSelect.options).forEach(opt => {
+      if (opt.value === '') return;
       opt.selected = userCountries.includes(opt.value);
   });
 
@@ -1096,7 +1099,7 @@ document.getElementById('edit-user-form').addEventListener('submit', async e => 
   const notes = document.getElementById('edit-user-notes').value;
 
   const allowedCountriesSelect = document.getElementById('edit-user-allowed-countries');
-  const allowedCountries = Array.from(allowedCountriesSelect.selectedOptions).map(opt => opt.value).join(',');
+  const allowedCountries = Array.from(allowedCountriesSelect.selectedOptions).map(opt => opt.value).filter(v => v).join(',');
 
   const body = {
       username,
@@ -2453,7 +2456,7 @@ document.getElementById('user-form').addEventListener('submit', async e => {
     }
 
     if (f.allowed_countries && f.allowed_countries.selectedOptions) {
-        const selected = Array.from(f.allowed_countries.selectedOptions).map(opt => opt.value);
+        const selected = Array.from(f.allowed_countries.selectedOptions).map(opt => opt.value).filter(v => v);
         if (selected.length > 0) {
             body.allowed_countries = selected.join(',');
         }
@@ -3096,15 +3099,42 @@ function populateCountryDropdown(selectId) {
     const select = document.getElementById(selectId);
     if (!select) return;
 
+    // En üstte "Tüm ülkeler" seçeneği: seçiliyken bölge kilidi yok demektir.
+    if (!select.querySelector('option[value=""]')) {
+        const allOpt = document.createElement('option');
+        allOpt.value = '';
+        allOpt.textContent = '🌍 Tüm ülkeler (kısıt yok)';
+        select.prepend(allOpt);
+    }
+
     // Sort by name
     const entries = Object.entries(COUNTRY_CODES).sort((a, b) => a[1].localeCompare(b[1]));
 
     entries.forEach(([code, name]) => {
+        if (select.querySelector(`option[value="${code}"]`)) return;
         const option = document.createElement('option');
         option.value = code;
         option.textContent = `[${code}] ${name}`;
         select.appendChild(option);
     });
+
+    // Karşılıklı dışlama: "Tümü" seçilirse ülkeler düşer, ülke seçilirse "Tümü" düşer.
+    if (!select.dataset.allToggleBound) {
+        select.dataset.allToggleBound = '1';
+        const allOpt = select.querySelector('option[value=""]');
+        let prevAll = allOpt.selected;
+        select.addEventListener('change', () => {
+            const nowAll = allOpt.selected;
+            if (select.selectedOptions.length > 1) {
+                if (nowAll && !prevAll) {
+                    Array.from(select.options).forEach(o => { o.selected = (o === allOpt); });
+                } else {
+                    allOpt.selected = false;
+                }
+            }
+            prevAll = allOpt.selected;
+        });
+    }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
