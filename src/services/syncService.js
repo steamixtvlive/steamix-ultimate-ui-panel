@@ -208,6 +208,24 @@ export async function performSync(providerId, userId, options = {}) {
         .map(t => catalogErrors?.[t])
         .filter(Boolean);
       if (reasons.length > 0) {
+        // Stale cleanup guard-aware sekilde yine kosar: bos-snapshot guard
+        // izin vermezse silinmez (ariza aninda toplu silmeye karsi koruma).
+        try {
+          const seenEmpty = new Map();
+          for (const t of completeStreamTypes) seenEmpty.set(t, new Set());
+          const existingAll = db.prepare('SELECT * FROM provider_channels WHERE provider_id = ?').all(providerId);
+          const cleanupTypes = new Set();
+          for (const t of completeStreamTypes) {
+            const localCount = existingAll.reduce(
+              (n, r) => n + (((r.stream_type || 'live') === t) ? 1 : 0), 0);
+            if (updateProviderSyncState(db, providerId, t, 0, localCount, startTime)) cleanupTypes.add(t);
+          }
+          for (const stale of selectStaleProviderChannels(existingAll, seenEmpty, cleanupTypes, new Map())) {
+            deleteProviderChannelCascade(db, providerId, stale.id);
+          }
+        } catch (cleanupErr) {
+          reasons.push(cleanupErr.message);
+        }
         errorMessage = `0 icerik alindi (${reasons.join(' | ')})`;
         db.prepare(`
           INSERT INTO sync_logs (provider_id, user_id, sync_time, status, error_message)

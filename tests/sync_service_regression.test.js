@@ -484,13 +484,16 @@ describe('sync authorization regression', () => {
       BEFORE DELETE ON stream_stats
       BEGIN SELECT RAISE(FAIL, 'dependent cleanup failure'); END;
     `);
-    xtreamState.channels = [];
-    await performSync(1, 1, { mode: 'scheduled' });
-    const failed = await performSync(1, 1, { mode: 'scheduled' });
-    expect(failed.errorMessage).toMatch(/dependent cleanup failure/);
-    expect(memDb.prepare('SELECT id FROM provider_channels WHERE id = ?').get(channel.id)).toEqual({ id: channel.id });
-    expect(memDb.prepare('SELECT COUNT(*) AS count FROM user_channels').get().count).toBe(1);
-    memDb.exec('DROP TRIGGER fail_stream_stat_delete');
+    try {
+      xtreamState.channels = [];
+      await performSync(1, 1, { mode: 'scheduled' });
+      const failed = await performSync(1, 1, { mode: 'scheduled' });
+      expect(failed.errorMessage).toMatch(/dependent cleanup failure/);
+      expect(memDb.prepare('SELECT id FROM provider_channels WHERE id = ?').get(channel.id)).toEqual({ id: channel.id });
+      expect(memDb.prepare('SELECT COUNT(*) AS count FROM user_channels').get().count).toBe(1);
+    } finally {
+      memDb.exec('DROP TRIGGER IF EXISTS fail_stream_stat_delete');
+    }
   });
 
   it('confirms empty VOD snapshots independently from live and ignores failed or invalid responses', async () => {

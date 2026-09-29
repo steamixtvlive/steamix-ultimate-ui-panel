@@ -112,9 +112,6 @@ export async function fetchProviderCatalog(provider, xtream) {
         }
       } catch (e) { console.error('M3U fallback error:', e.message); errors.live = `M3U: ${e.message}`; }
       if (!liveFetchComplete && apiFetchComplete) liveFetchComplete = true;
-      if (Array.isArray(liveChans) && liveChans.length === 0 && !errors.live) {
-        errors.live = 'Xtream ve M3U denendi, kanal donmedi (URL/kullanici/sifre kontrol edin)';
-      }
     }
 
     // Normalize

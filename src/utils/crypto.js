@@ -3,6 +3,8 @@ import fs from 'fs';
 import path from 'path';
 import { DATA_DIR } from '../config/constants.js';
 
+fs.mkdirSync(DATA_DIR, { recursive: true });
+
 let JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET) {
   const jwtFile = path.join(DATA_DIR, 'jwt.secret');
