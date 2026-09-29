@@ -182,7 +182,7 @@ describe('Stream Controller Performance (proxyLive)', () => {
 
     req = {
       params: { stream_id: '1', username: 'user', password: 'pass' },
-      query: {},
+      query: { proxy: '1' },
       path: '/live/user/pass/1.m3u8',
       headers: {},
       ip: '127.0.0.1',
@@ -350,14 +350,18 @@ describe('Stream Controller Performance (proxyLive)', () => {
     vi.spyOn(streamManager, 'remove').mockImplementation(actualManager.remove.bind(actualManager));
     vi.spyOn(streamManager.localStreams, 'set').mockImplementation(actualManager.localStreams.set.bind(actualManager.localStreams));
     const upstream = new PassThrough();
-    res = Object.assign(new PassThrough(), { setHeader: vi.fn() });
+    res = Object.assign(new PassThrough(), {
+      setHeader: vi.fn(),
+      redirect: vi.fn(),
+      sendStatus: vi.fn().mockReturnThis(),
+    });
     req = Object.assign(new EventEmitter(), { ...req, on: EventEmitter.prototype.on, path: '/live/user/pass/1.ts' });
     let releaseFetch;
     fetch.mockImplementationOnce(() => new Promise(resolve => { releaseFetch = resolve; }));
     vi.useFakeTimers();
     try {
       const pending = streamController.proxyLive(req, res);
-      await vi.advanceTimersByTimeAsync(100);
+      await vi.advanceTimersByTimeAsync(200);
       const closed = once(res, 'close');
       res.destroy();
       await closed;
@@ -395,6 +399,7 @@ describe('Stream Controller Performance (proxyLive)', () => {
   it('uses the stored MKV extension when the public movie suffix differs', async () => {
     req.params.ext = 'ts';
     req.path = '/movie/user/pass/1.ts';
+    req.query = { proxy: '1' };
     req.headers = {
       range: 'bytes=100-200',
       'user-agent': 'Mozilla/5.0 Firefox/140',
@@ -436,6 +441,7 @@ describe('Stream Controller Performance (proxyLive)', () => {
     streamDbState.channelOverrides[2] = { mime_type: '' };
     req.params = { ...req.params, stream_id: '2', ext: 'ts' };
     req.path = '/movie/user/pass/2.ts';
+    req.query = { proxy: '1' };
     res.headersSent = false;
 
     await streamController.proxyMovie(req, res);
@@ -449,6 +455,7 @@ describe('Stream Controller Performance (proxyLive)', () => {
   it('ignores a malformed public movie extension', async () => {
     req.params.ext = 'ts%0a%23EXTINF';
     req.path = '/movie/user/pass/1.ts%0a%23EXTINF';
+    req.query = { proxy: '1' };
     res.headersSent = false;
 
     await streamController.proxyMovie(req, res);
@@ -469,6 +476,7 @@ describe('Stream Controller Performance (proxyLive)', () => {
     streamDbState.providerPool[0].backup_urls = backupUrls;
     req.params = { ...req.params, stream_id: '3', ext: 'ts' };
     req.path = '/movie/user/pass/3.ts';
+    req.query = { proxy: '1' };
     res.headersSent = false;
     fetch.mockResolvedValueOnce({
       ok: false,
@@ -511,6 +519,8 @@ describe('Stream Controller Performance (proxyLive)', () => {
       max_connections: 5,
     }];
     req.params = { ...req.params, stream_id: '4', ext: 'ts' };
+    req.path = '/movie/user/pass/4.ts';
+    req.query = { proxy: '1' };
     res.headersSent = false;
 
     await streamController.proxyMovie(req, res);
@@ -540,6 +550,8 @@ describe('Stream Controller Performance (proxyLive)', () => {
     ];
     streamManager.getProviderConnectionCount.mockImplementation(async id => id === 200 ? 1 : 0);
     req.params = { ...req.params, stream_id: '5', ext: 'ts' };
+    req.path = '/movie/user/pass/5.ts';
+    req.query = { proxy: '1' };
     res.headersSent = false;
 
     await streamController.proxyMovie(req, res);
@@ -564,6 +576,7 @@ describe('Stream Controller Performance (proxyLive)', () => {
   it('uses the stored MKV extension when the public series suffix differs', async () => {
     req.params = { episode_id: '900000321', ext: 'mp4' };
     req.path = '/series/user/pass/900000321.mp4';
+    req.query = { proxy: '1' };
     req.headers = {
       range: 'bytes=300-400',
       'user-agent': 'Mozilla/5.0 Firefox/140',
@@ -605,6 +618,8 @@ describe('Stream Controller Performance (proxyLive)', () => {
 
   it('resolves a stale provider-based episode ID only when it has one exact match', async () => {
     req.params = { episode_id: '1000000001', ext: 'mp4' };
+    req.path = '/series/user/pass/1000000001.mp4';
+    req.query = { proxy: '1' };
     req.headers = { range: 'bytes=0-10' };
     res.headersSent = false;
 
@@ -652,6 +667,8 @@ describe('Stream Controller Performance (proxyLive)', () => {
 
   it('allows a share guest only for the explicitly shared series', async () => {
     req.params = { episode_id: '900000321', ext: 'mkv' };
+    req.path = '/series/user/pass/900000321.mkv';
+    req.query = { proxy: '1' };
     req.headers = { range: 'bytes=0-10' };
     res.headersSent = false;
     authService.getXtreamUser.mockResolvedValue({
