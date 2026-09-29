@@ -103,7 +103,7 @@ vi.mock('../../src/database/db.js', () => {
             })),
           };
         }
-        if (query.includes('FROM providers WHERE user_id = ? AND url LIKE ?')) {
+        if (query.includes('FROM providers WHERE') && query.includes('url LIKE ?')) {
             return {
                 all: vi.fn(() => streamDbState.providerPool)
             };
