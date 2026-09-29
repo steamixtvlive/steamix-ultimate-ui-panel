@@ -2,7 +2,7 @@ name: Keep Alive
 
 on:
   schedule:
-    - cron: '*/14 * * * *'  # her 14 dk (Render 15 dk uyur, 14 te onu aşar)
+    - cron: '*/5 * * * *'  # her 5 dk: 14 dk Render'in 15 dk uyku sinirina cok yakindi, bir atlama uyutuyordu
   workflow_dispatch:
 
 jobs:
