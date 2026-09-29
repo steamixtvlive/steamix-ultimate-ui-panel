@@ -105,7 +105,7 @@ export function startEpgScheduler() {
 }
 
 export function startCleanupScheduler() {
-  // Check every hour
+  // Hafif temizlik her saat (hizli DELETE'ler, event loop'u kilitlemez)
   setInterval(() => {
     try {
       const now = Math.floor(Date.now() / 1000);
@@ -116,14 +116,19 @@ export function startCleanupScheduler() {
       db.prepare('DELETE FROM blocked_ips WHERE expires_at < ?').run(now);
       // Clean expired shares
       db.prepare('DELETE FROM shared_links WHERE end_time IS NOT NULL AND end_time < ?').run(now);
-
-      // Clean old EPG data (7 days)
-      pruneOldEpgData(7);
-
     } catch (e) {
       console.error('Cleanup error:', e);
     }
   }, 3600000); // Every hour
+  // Agir EPG budama gunde 1 (gece 04:00 civari): saatlik calisinca kucuk
+  // free instance'ta event loop kilitlenip ping timeout yiyordu.
+  setInterval(() => {
+    try {
+      if (new Date().getHours() === 4) pruneOldEpgData(7);
+    } catch (e) {
+      console.error('EPG prune error:', e);
+    }
+  }, 3600000);
   console.info('🧹 Cleanup Scheduler started');
 }
 
