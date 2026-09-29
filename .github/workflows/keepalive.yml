@@ -11,13 +11,15 @@ jobs:
     steps:
       - name: Render'a istek at (uyanık tut)
         run: |
+          # Not: adim `bash -e` ile calisir; curl zaman asiminda (exit 28)
+          # adimin erken olmemesi icin `|| echo "000"` kalkandir.
           for i in 1 2 3; do
-            code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 60 "https://xtreamcodes-rvn1.onrender.com/")
+            code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 120 "https://xtreamcodes-rvn1.onrender.com/" || echo "000")
             echo "ping $i -> HTTP $code"
             if [ "$code" = "200" ] || [ "$code" = "302" ] || [ "$code" = "403" ]; then
               echo "OK - panel ayakta"
               exit 0
             fi
-            sleep 5
+            sleep 10
           done
-          echo "Panel yanıt vermedi ama workflow başarılı sayıldı (uyanma sürebilir)"
+          echo "Panel yavas yanit verdi (soguk acilis olabilir); sonraki ping uyandiracak"
