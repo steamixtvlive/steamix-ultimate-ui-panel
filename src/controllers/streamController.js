@@ -382,7 +382,7 @@ export const proxyLive = async (req, res) => {
 
   } catch (e) {
     console.error('Stream proxy error:', e.message);
-    if (!res.headersSent) {
+    if (res && typeof res.sendStatus === 'function' && !res.headersSent && !res.destroyed) {
         streamManager.localStreams.delete(connectionId);
         cleanup();
         return res.sendStatus(500);

@@ -197,6 +197,8 @@ describe('Stream Controller Performance (proxyLive)', () => {
       write: vi.fn(),
       end: vi.fn(),
       status: vi.fn(),
+      destroyed: false,
+      headersSent: false,
     };
 
     // Mock auth
