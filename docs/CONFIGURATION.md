@@ -191,6 +191,9 @@ until this is exercised on a real Proxmox host.
   VOD, series, M3U). Use it when a host blocks the default node agent and
   sync returns 0 channels. Empty syncs now report the per-type reason
   (HTTP status / error) in the sync response instead of silent zeros.
+  If a provider answers HTTP 429, catalog sync enters a 15-minute cooldown
+  (or the `Retry-After` duration) and fails fast without hammering upstream;
+  sync resumes automatically when the cooldown expires.
 
 ## Stream Tracking
 
