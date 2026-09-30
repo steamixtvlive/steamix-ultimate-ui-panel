@@ -1,8 +1,9 @@
 name: Keep Alive
 
 on:
-  schedule:
-    - cron: '*/5 * * * *'  # her 5 dk: 14 dk Render'in 15 dk uyku sinirina cok yakindi, bir atlama uyutuyordu
+  # schedule DEVRE DISI (UptimeRobot devraldi):
+  # schedule:
+  #   - cron: '*/5 * * * *'  # her 5 dk: 14 dk Render'in 15 dk uyku sinirina cok yakindi, bir atlama uyutuyordu
   workflow_dispatch:
 
 jobs:
