@@ -20,6 +20,52 @@ export function xtreamApiBase(rawUrl) {
   }
 }
 
+// 429 asiri-istek korumasi: saglayici "yavasla" deyince bir sure upstream'e
+// hic dokunmadan hizli-basarisiz don. Boylece scheduler + kullanici trafigi
+// retry storm ile saglayiciyi kilitlemez, soguma bitince akis kendiliginden doner.
+const rateLimitCooldowns = new Map();
+const RATE_LIMIT_COOLDOWN_MS = 15 * 60 * 1000;
+
+function providerCooldownKey(provider) {
+  return `p${provider?.id ?? ''}|${String(provider?.url || '').trim()}|${provider?.username || ''}`;
+}
+
+export function isProviderRateLimited(provider) {
+  const key = providerCooldownKey(provider);
+  const until = rateLimitCooldowns.get(key);
+  if (!until) return false;
+  if (Date.now() >= until) {
+    rateLimitCooldowns.delete(key);
+    return false;
+  }
+  return true;
+}
+
+export function markProviderRateLimited(provider, retryAfterSec) {
+  const secs = Number(retryAfterSec);
+  const waitMs = Number.isFinite(secs) && secs > 0 ? Math.min(secs, 3600) * 1000 : RATE_LIMIT_COOLDOWN_MS;
+  rateLimitCooldowns.set(providerCooldownKey(provider), Date.now() + waitMs);
+}
+
+// Test izolasyonu icin: sogumalari temizler.
+export function clearProviderRateLimits() {
+  rateLimitCooldowns.clear();
+}
+
+function noteUpstreamRateLimit(provider, resp, err) {
+  const status = resp?.status;
+  let retryAfter;
+  try {
+    retryAfter = resp?.headers?.get?.('retry-after');
+  } catch { retryAfter = undefined; }
+  const text = `${status ?? ''} ${err?.message || err || ''}`;
+  if (status === 429 || /429|too many requests|rate.?limit/i.test(text)) {
+    markProviderRateLimited(provider, retryAfter !== undefined ? Number(retryAfter) : undefined);
+    return true;
+  }
+  return false;
+}
+
 export async function fetchProviderCatalog(provider, xtream) {
   const baseUrl = xtreamApiBase(provider.url);
   const authParams = `username=${encodeURIComponent(provider.username)}&password=${encodeURIComponent(provider.password)}`;
@@ -34,6 +80,12 @@ export async function fetchProviderCatalog(provider, xtream) {
   const snapshotStates = new Map();
   const errors = { live: null, movie: null, series: null };
 
+  // Sogumadaysa upstream'e hic dokunma: retry storm'u keser.
+  if (isProviderRateLimited(provider)) {
+    const msg = 'Saglayici asiri-istek (429) sogumada — kisa sure sonra otomatik denenecek';
+    return { allChannels, allCategories, completeStreamTypes, snapshotStates, errors: { live: msg, movie: msg, series: msg } };
+  }
+
   // 1. Live & M3U Fallback
   try {
     let liveChans = [];
@@ -45,9 +97,11 @@ export async function fetchProviderCatalog(provider, xtream) {
       liveChans = await xtream.getChannels();
       liveFetchComplete = Array.isArray(liveChans);
     } catch (e) {
+      noteUpstreamRateLimit(provider, null, e);
       errors.live = `Xtream API: ${e?.message || e}`;
       try {
         const resp = await fetchSafe(`${baseUrl}/player_api.php?${authParams}&action=get_live_streams`, { timeout: 60000, headers: uaHeaders });
+        noteUpstreamRateLimit(provider, resp);
         if (resp.ok) {
           const contentType = resp.headers?.get?.('content-type');
           if (contentType && contentType.includes('application/json')) {
@@ -59,7 +113,7 @@ export async function fetchProviderCatalog(provider, xtream) {
         } else {
           errors.live = `Xtream API: HTTP ${resp.status}`;
         }
-      } catch (e2) { errors.live = `Xtream API: ${e2?.message || e2}`; }
+      } catch (e2) { noteUpstreamRateLimit(provider, null, e2); errors.live = `Xtream API: ${e2?.message || e2}`; }
     }
 
     // M3U Fallback if Xtream failed or empty
@@ -69,6 +123,7 @@ export async function fetchProviderCatalog(provider, xtream) {
       try {
         // Try fetching as M3U
         const m3uResp = await fetchSafe(provider.url, { timeout: 60000, headers: uaHeaders }); // Use original URL
+        noteUpstreamRateLimit(provider, m3uResp);
         if (m3uResp.ok) {
           const parsed = await parseM3uStream(m3uResp.body);
           if (parsed.isM3u) {
@@ -110,7 +165,7 @@ export async function fetchProviderCatalog(provider, xtream) {
             });
           }
         }
-      } catch (e) { console.error('M3U fallback error:', e.message); errors.live = `M3U: ${e.message}`; }
+      } catch (e) { console.error('M3U fallback error:', e.message); noteUpstreamRateLimit(provider, null, e); errors.live = `M3U: ${e.message}`; }
       if (!liveFetchComplete && apiFetchComplete) liveFetchComplete = true;
     }
 
@@ -129,6 +184,7 @@ export async function fetchProviderCatalog(provider, xtream) {
 
     if (!m3uMode) {
       const respCat = await fetchSafe(`${baseUrl}/player_api.php?${authParams}&action=get_live_categories`, { timeout: 60000, headers: uaHeaders });
+      noteUpstreamRateLimit(provider, respCat);
       if (respCat.ok) {
         const cats = await respCat.json();
         if (Array.isArray(cats)) {
@@ -138,12 +194,13 @@ export async function fetchProviderCatalog(provider, xtream) {
         errors.live = `Kategori: HTTP ${respCat.status}`;
       }
     }
-  } catch (e) { console.error('Live sync error:', e); errors.live = errors.live || String(e?.message || e); }
+  } catch (e) { console.error('Live sync error:', e); noteUpstreamRateLimit(provider, null, e); errors.live = errors.live || String(e?.message || e); }
 
   // 2. Movies (VOD)
   try {
     console.debug('Fetching VOD streams...');
     const resp = await fetchSafe(`${baseUrl}/player_api.php?${authParams}&action=get_vod_streams`, { timeout: 60000, headers: uaHeaders });
+    noteUpstreamRateLimit(provider, resp);
     if (resp.ok) {
       const vods = await resp.json();
       console.debug(`Fetched ${Array.isArray(vods) ? vods.length : 'invalid'} VODs`);
@@ -162,17 +219,19 @@ export async function fetchProviderCatalog(provider, xtream) {
     }
 
     const respCat = await fetchSafe(`${baseUrl}/player_api.php?${authParams}&action=get_vod_categories`, { timeout: 60000, headers: uaHeaders });
+    noteUpstreamRateLimit(provider, respCat);
     if (respCat.ok) {
       const cats = await respCat.json();
       if (Array.isArray(cats)) {
         cats.forEach(c => { c.category_type = 'movie'; allCategories.push(c); });
       }
     }
-  } catch (e) { console.error('VOD sync error:', e); errors.movie = errors.movie || String(e?.message || e); }
+  } catch (e) { console.error('VOD sync error:', e); noteUpstreamRateLimit(provider, null, e); errors.movie = errors.movie || String(e?.message || e); }
 
   // 3. Series
   try {
     const resp = await fetchSafe(`${baseUrl}/player_api.php?${authParams}&action=get_series`, { timeout: 60000, headers: uaHeaders });
+    noteUpstreamRateLimit(provider, resp);
     if (resp.ok) {
       const series = await resp.json();
       if (Array.isArray(series)) {
@@ -192,13 +251,14 @@ export async function fetchProviderCatalog(provider, xtream) {
     }
 
     const respCat = await fetchSafe(`${baseUrl}/player_api.php?${authParams}&action=get_series_categories`, { timeout: 60000, headers: uaHeaders });
+    noteUpstreamRateLimit(provider, respCat);
     if (respCat.ok) {
       const cats = await respCat.json();
       if (Array.isArray(cats)) {
         cats.forEach(c => { c.category_type = 'series'; allCategories.push(c); });
       }
     }
-  } catch (e) { console.error('Series sync error:', e); errors.series = errors.series || String(e?.message || e); }
+  } catch (e) { console.error('Series sync error:', e); noteUpstreamRateLimit(provider, null, e); errors.series = errors.series || String(e?.message || e); }
 
   return { allChannels, allCategories, completeStreamTypes, snapshotStates, errors };
 }
