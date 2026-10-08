@@ -1387,6 +1387,14 @@
                   <!-- Options populated dynamically -->
               </select>
             </div>
+            <div class="mb-3">
+              <label class="form-label" for="edit-user-allowed-ip">Kilitli IP (IP Lock)</label>
+              <div class="input-group">
+                <input type="text" class="form-control" id="edit-user-allowed-ip" readonly placeholder="Henüz kilitlenmedi — ilk girişte otomatik kilitlenir">
+                <button class="btn btn-outline-warning" type="button" id="edit-user-ip-reset">Sıfırla</button>
+              </div>
+              <div class="small text-muted mt-1">İlk giren IP'ye kilitlenir. Farklı IP ancak aktif oturum yoksa öğrenilir. Takılan müşteride Sıfırla'ya bas.</div>
+            </div>
             <div class="mb-3 form-check">
               <input type="checkbox" class="form-check-input" id="edit-user-webui-access">
               <label class="form-check-label" for="edit-user-webui-access" data-i18n="webui_access">Web UI Access</label>

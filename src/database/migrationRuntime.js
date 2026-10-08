@@ -282,6 +282,20 @@ export function migrateUserAllowedCountries(db) {
   }
 }
 
+export function migrateUserAllowedIp(db) {
+  try {
+    const tableInfo = db.prepare("PRAGMA table_info(users)").all();
+    const columns = tableInfo.map(c => c.name);
+
+    if (!columns.includes('allowed_ip')) {
+      db.exec('ALTER TABLE users ADD COLUMN allowed_ip TEXT');
+      console.log('✅ DB Migration: allowed_ip column added to users');
+    }
+  } catch (e) {
+    console.error('User Allowed IP migration error:', e);
+  }
+}
+
 export function migrateUserChannelsCustomName(db) {
   try {
     const tableInfo = db.prepare("PRAGMA table_info(user_channels)").all();

@@ -208,6 +208,11 @@ connection details and the provider management box. Provider names/options and
 the user's own provider catalog remain available for editing channel, movie,
 series, and category-scoped EPG lists.
 
+User update payloads accept an optional `allowed_ip`. The first IP to log in
+is locked automatically; a different IP is rejected while the user has an
+active stream, otherwise it is relearned (modem/VPN/mobile friendly). Sending
+`allowed_ip: null` clears the lock. Admins and whitelisted IPs are exempt.
+
 Deleting a user removes user-owned providers and dependent runtime/configuration
 rows first, including provider icon cache entries, share links, temporary
 tokens, user backups, sync data, categories, channels, and mappings. This keeps

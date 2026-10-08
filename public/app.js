@@ -1066,8 +1066,17 @@ function showEditUserModal(user) {
       opt.selected = userCountries.includes(opt.value);
   });
 
+  // IP Lock: kilitli IP'yi goster, sifirlama varsayilan kapali
+  document.getElementById('edit-user-allowed-ip').value = user.allowed_ip || '';
+  document.getElementById('edit-user-allowed-ip').dataset.resetIp = '0';
+
   modal.show();
 }
+
+document.getElementById('edit-user-ip-reset').addEventListener('click', () => {
+  document.getElementById('edit-user-allowed-ip').value = '';
+  document.getElementById('edit-user-allowed-ip').dataset.resetIp = '1';
+});
 
 document.getElementById('edit-user-form').addEventListener('submit', async e => {
   e.preventDefault();
@@ -1100,6 +1109,7 @@ document.getElementById('edit-user-form').addEventListener('submit', async e => 
 
   const allowedCountriesSelect = document.getElementById('edit-user-allowed-countries');
   const allowedCountries = Array.from(allowedCountriesSelect.selectedOptions).map(opt => opt.value).filter(v => v).join(',');
+  const ipReset = document.getElementById('edit-user-allowed-ip').dataset.resetIp === '1';
 
   const body = {
       username,
@@ -1111,6 +1121,7 @@ document.getElementById('edit-user-form').addEventListener('submit', async e => 
       allowed_countries: allowedCountries || null,
       notes: notes
   };
+  if (ipReset) body.allowed_ip = null;
   if (password) body.password = password;
 
   try {

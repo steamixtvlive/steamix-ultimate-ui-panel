@@ -27,7 +27,7 @@ export const getUsers = (req, res) => {
     // ⚡ Bolt: Replace .all().map() with .iterate() to eliminate intermediate V8 array allocation
     // 🎯 Why: Loading a massive list of users into memory, only to map it into another array, causes double memory allocation and GC pressure.
     // 📊 Impact: Lowers peak memory usage and garbage collection overhead, especially on instances with many users.
-    const stmt = db.prepare('SELECT id, username, password, plain_password, is_active, webui_access, provider_access, hdhr_enabled, hdhr_token, max_connections, expiry_date, allowed_countries, notes FROM users ORDER BY id');
+    const stmt = db.prepare('SELECT id, username, password, plain_password, is_active, webui_access, provider_access, hdhr_enabled, hdhr_token, max_connections, expiry_date, allowed_countries, allowed_ip, notes FROM users ORDER BY id');
     const result = [];
 
     for (const u of stmt.iterate()) {
@@ -52,6 +52,7 @@ export const getUsers = (req, res) => {
             max_connections: u.max_connections || 0,
             expiry_date: u.expiry_date,
             allowed_countries: u.allowed_countries,
+            allowed_ip: u.allowed_ip || null,
             notes: u.notes
         });
     }
@@ -404,7 +405,7 @@ export const updateUser = async (req, res) => {
   try {
     if (!req.user.is_admin) return res.status(403).json({error: 'Access denied'});
     const id = Number(req.params.id);
-    const { username, password, webui_access, provider_access, hdhr_enabled, max_connections, expiry_date, allowed_countries, notes } = req.body;
+    const { username, password, webui_access, provider_access, hdhr_enabled, max_connections, expiry_date, allowed_countries, allowed_ip, notes } = req.body;
 
     // Get existing user
     const existing = db.prepare('SELECT * FROM users WHERE id = ?').get(id);
@@ -495,6 +496,11 @@ export const updateUser = async (req, res) => {
         params.push((allowed_countries && allowed_countries !== 'null' && allowed_countries !== 'undefined') ? allowed_countries : null);
     }
 
+    if (allowed_ip !== undefined) {
+        updates.push('allowed_ip = ?');
+        params.push((allowed_ip && allowed_ip !== 'null' && allowed_ip !== 'undefined') ? String(allowed_ip).trim() || null : null);
+    }
+
     if (notes !== undefined) {
         if (notes && notes.length > 50) {
             return res.status(400).json({ error: 'notes_too_long' });
@@ -509,7 +515,7 @@ export const updateUser = async (req, res) => {
     db.prepare(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`).run(...params);
 
     // Security Enhancement: Terminate active streams if security credentials/access changed
-    if (password || expiry_date !== undefined || webui_access !== undefined || hdhr_enabled !== undefined || max_connections !== undefined || allowed_countries !== undefined) {
+    if (password || expiry_date !== undefined || webui_access !== undefined || hdhr_enabled !== undefined || max_connections !== undefined || allowed_countries !== undefined || allowed_ip !== undefined) {
         try {
             const activeStreams = db.prepare('SELECT id FROM current_streams WHERE user_id = ?').all(id);
             for (const stream of activeStreams) {

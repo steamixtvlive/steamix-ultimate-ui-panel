@@ -37,3 +37,23 @@ export function isIpAllowedForUser(ip, user) {
 
   return allowedList.includes(geo.country.toUpperCase());
 }
+
+/**
+ * IP kilit kararı (saf fonksiyon — DB'ye dokunmaz, test edilebilir).
+ * Mantık: ilk giren IP kilitlenir; farklı IP ancak kullanıcının aktif
+ * oturumu yoksa "meşru değişim" (modem reset/VPN/mobil) sayılıp öğrenilir.
+ * @param {object} args
+ * @param {string|null} args.allowedIp - Kullanıcıya kilitli IP (yoksa kilit yok)
+ * @param {string|null} args.currentIp - İsteğin temizlenmiş IP'si
+ * @param {boolean} args.isWhitelisted - Whitelist bypass
+ * @param {boolean} args.hasActiveSession - Kullanıcının açık akışı var mı
+ * @returns {'allow'|'deny'|'relearn'}
+ */
+export function resolveIpLock({ allowedIp, currentIp, isWhitelisted, hasActiveSession }) {
+  if (!allowedIp) return 'allow';
+  if (isWhitelisted) return 'allow';
+  if (!currentIp) return 'allow';
+  if (currentIp === allowedIp) return 'allow';
+  if (!hasActiveSession) return 'relearn';
+  return 'deny';
+}

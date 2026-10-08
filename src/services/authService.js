@@ -3,9 +3,9 @@ import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import db from '../database/db.js';
 import { decrypt, JWT_SECRET } from '../utils/crypto.js';
-import { getSetting, getCookie } from '../utils/helpers.js';
+import { getSetting, getCookie, cleanIp } from '../utils/helpers.js';
 import { expiryEpoch } from '../utils/stalker.js';
-import { isIpAllowedForUser } from './geoIpService.js';
+import { isIpAllowedForUser, resolveIpLock } from './geoIpService.js';
 import { JWT_EXPIRES_IN, BCRYPT_ROUNDS, AUTH_CACHE_TTL, AUTH_CACHE_MAX_SIZE, AUTH_CACHE_CLEANUP_INTERVAL } from '../config/constants.js';
 
 // Authentication Cache
@@ -321,6 +321,45 @@ export async function getXtreamUser(req) {
     );
     // Setting user to null causes the proxy/streaming to fail auth
     user = null;
+  }
+
+  // Apply IP Lock: ilk giren IP'ye kilitlenir (adminler muaf).
+  // Aktif oturum yoksa meşru değişim sayılıp yeni IP öğrenilir (modem/VPN/mobil).
+  if (user && !user.is_admin) {
+    try {
+      const currentIp = (cleanIp && cleanIp(req.ip)) || req.ip || null;
+      if (!user.allowed_ip && currentIp) {
+        db.prepare('UPDATE users SET allowed_ip = ? WHERE id = ?').run(currentIp, user.id);
+        user.allowed_ip = currentIp;
+      } else if (user.allowed_ip) {
+        let isWhitelisted = false;
+        try {
+          isWhitelisted = !!db.prepare('SELECT id FROM whitelisted_ips WHERE ip = ?').get(currentIp);
+        } catch {}
+        let hasActiveSession = false;
+        try {
+          hasActiveSession = !!db.prepare('SELECT 1 FROM current_streams WHERE user_id = ? LIMIT 1').get(user.id);
+        } catch {}
+        const decision = resolveIpLock({
+          allowedIp: user.allowed_ip,
+          currentIp,
+          isWhitelisted,
+          hasActiveSession,
+        });
+        if (decision === 'relearn' && currentIp) {
+          db.prepare('UPDATE users SET allowed_ip = ? WHERE id = ?').run(currentIp, user.id);
+          user.allowed_ip = currentIp;
+        } else if (decision === 'deny') {
+          const now = Math.floor(Date.now() / 1000);
+          db.prepare('INSERT INTO security_logs (ip, action, details, timestamp) VALUES (?, ?, ?, ?)').run(
+              req.ip, 'Blocked Xtream/Stream Access (IP Lock)', `User: ${user.username || username}`, now
+          );
+          user = null;
+        }
+      }
+    } catch (e) {
+      console.error('IP Lock check error:', e.message);
+    }
   }
 
   // Only log failed attempts when there was no token (prevents HLS segment

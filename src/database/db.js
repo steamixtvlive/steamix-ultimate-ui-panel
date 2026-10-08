@@ -322,6 +322,7 @@ export function initDb(isPrimary) {
             migrations.migrateUserExpiryDate(db);
             migrations.migrateUserTokenVersion(db);
             migrations.migrateUserAllowedCountries(db);
+            migrations.migrateUserAllowedIp(db);
             migrations.migrateUserChannelsCustomName(db);
             migrations.migrateUserChannelsIsHidden(db);
             migrations.migrateUserChannelMappingId(db);
